@@ -1,4 +1,4 @@
-function [Knew,Anew,T] = DiagFR(K,A,b,useDD)
+function [Knew,Anew,bnew,T] = DiagFR(K,A,b,useDD)
     
     Knew = K;
     if (size(A,1) > size(A,2))
@@ -21,13 +21,15 @@ function [Knew,Anew,T] = DiagFR(K,A,b,useDD)
         if isempty(varRmv)
             
            if (enableDD == 1) || useDD == 0
-                return
+                break;
            else
                enableDD = 1;
            end
         end
     end
 
+    [Anew,bnew]=clean_linear(Anew,b);
+    
 end
 
 
@@ -123,6 +125,9 @@ function [varRmv,Knew,Anew,T] = doIter(K,A,b,DD)
     T = T*T2;
     Anew = A * T;
   
+
+    
+    
 end
 
 
