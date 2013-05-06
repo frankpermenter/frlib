@@ -1,4 +1,4 @@
-function [Knew,Anew,T] = DiagFR(K,A,b)
+function [Knew,Anew,T] = DiagFR(K,A,b,useDD)
     
     Knew = K;
     if (size(A,1) > size(A,2))
@@ -8,6 +8,11 @@ function [Knew,Anew,T] = DiagFR(K,A,b)
     end
     
     T = speye(size(Anew,2));
+    
+    if ~exist('useDD','var') 
+        useDD = 0;
+    end
+    
     enableDD = 0;
     
     while (1)
@@ -15,7 +20,7 @@ function [Knew,Anew,T] = DiagFR(K,A,b)
         T = T*Tform;
         if isempty(varRmv)
             
-           if (enableDD == 1)
+           if (enableDD == 1) || useDD == 0
                 return
            else
                enableDD = 1;
@@ -51,13 +56,9 @@ function [varRmv,Knew,Anew,T] = doIter(K,A,b,DD)
 
     if (DD == 1)
         V = ones(2);
-      %  V = randn(2,2);
-      %  V = V*V';
+
         A_ineq1 = -sedumiNbyN(K,V);
         V(2,1) = -1;V(1,2) = -1;
-
-      %  V = randn(2,2);
-      %  V = V*V';
 
         A_ineq2 = -sedumiNbyN(K,V);
         A_ineq1 = [A_ineq1;A_ineq2];
@@ -73,8 +74,6 @@ function [varRmv,Knew,Anew,T] = doIter(K,A,b,DD)
 
     N = size(A_ineq,1)-size(A_ineq1,1);
         
-    display('dd')
-    length(find(y(N+1:end)))
     if (0)%DD == 0)
         Knew = K;
         save test.mat Knew A_ineq A_ineq1 A_ineq2 y A b
