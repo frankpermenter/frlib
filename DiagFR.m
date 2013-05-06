@@ -1,4 +1,4 @@
-function [Knew,Anew,bnew,T] = DiagFR(K,A,b,useDD)
+function [Knew,Anew,bnew,cnew,T] = DiagFR(K,A,b,c,useDD)
     
     Knew = K;
     if (size(A,1) > size(A,2))
@@ -16,7 +16,7 @@ function [Knew,Anew,bnew,T] = DiagFR(K,A,b,useDD)
     enableDD = 0;
     
     while (1)
-        [varRmv,Knew,Anew,Tform]=doIter(Knew,Anew,b,enableDD);
+        [varRmv,Knew,Anew,cnew,Tform]=doIter(Knew,Anew,b,c,enableDD);
         T = T*Tform;
         if isempty(varRmv)
             
@@ -40,7 +40,7 @@ end
 
 
 
-function [varRmv,Knew,Anew,T] = doIter(K,A,b,DD)
+function [varRmv,Knew,Anew,c,T] = doIter(K,A,b,c,DD)
 
     varRmv=[];Knew=[];Anew=[];T=[];col=[];
     K = cleanK(K);
@@ -124,7 +124,7 @@ function [varRmv,Knew,Anew,T] = doIter(K,A,b,DD)
     end
     T = T*T2;
     Anew = A * T;
-  
+    c = c(indxKeep);
 
     
     
