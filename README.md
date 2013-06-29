@@ -13,15 +13,16 @@ prgR = prg.ReduceDual('dd');
 
 Reduction of Primal Problems
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %pass in sedumi formatted A,b,c,K
-Z = frlibPrg(A,b,c,K);
+prg = frlibPrg(A,b,c,K);
 
 %Reduce primal
-prg = Z.ReducePrimal('dd');
-[x,y] = prg.Solve();
+prgR = prg.ReducePrimal('dd');
+[x,y] = prgR.Solve();
 
 %Recover solution to unreduced problem
-xO = prg.RecoverPrimal(x);
+xO = prgR.RecoverPrimal(x);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -32,15 +33,15 @@ Inner approximations
 %The following commands reduced an SDP using the non-negative
 %diagonal  matrices as an inner approximation of the PSD cone
 
-prg = Z.ReduceDual('d');
-prg = Z.ReducePrimal('d');
+prg = prgR.ReduceDual('d');
+prg = prgR.ReducePrimal('d');
 
 
 %The following commands reduced an SDP using the diagonally
 %dominant matrices as an inner approximation of the PSD cone
 
-prg = Z.ReduceDual('dd');
-prg = Z.ReducePrimal('dd');
+prg = prgR.ReduceDual('dd');
+prg = prgR.ReducePrimal('dd');
 
 
 
