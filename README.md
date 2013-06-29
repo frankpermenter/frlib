@@ -1,15 +1,10 @@
-Reduction of Dual Problems:
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%pass in sedumi formatted A,b,c,K
+To reduce an SDP in dual form, pass sedumi formatted inputs A,b,c,K to the function
 
 prg = frlibPrg(A,b,c,K);
 
-%reduce the dual
-
+Then call.
 prgR = prg.ReduceDual('dd');
 
-%solve. solutions to reduced dual are solutions to unreduced
 
 [~,yFr]=prgR.Solve();
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
