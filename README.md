@@ -19,6 +19,6 @@ To recover solutions x0 to the unreduced problem call
 
 [xFr]=prgR.Solve();
 
-xO = prgR.RecoverPrimal(xFr);
+x0 = prgR.RecoverPrimal(xFr);
 
 
