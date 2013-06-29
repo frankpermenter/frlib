@@ -1,26 +1,16 @@
 
 clear all;
-load ./tests/prob_data_2_for_frank.mat;
+load ./test/hybridLyap.mat;
 A = A';
-tic,
 Z = frlibPrg(A,b,c,K);
 prg = Z.ReducePrimal('dd');
 [x,y] = prg.Solve();
 xO = prg.RecoverPrimal(x);
 success = prg.CheckPrimal(x);
-
-
-%K.s = K.s(K.s > 0)
-%Z = FacialRed(A,b,c,K);
-%[A,b,c,K,T] = Z.ReducePrimal('sdd');;
-%break;
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load bench/files/hinf12.mat;
 
-%load bench/files/minphase.mat;
-%A = At';
 
 Z = frlibPrg(A,b,c,K);
 prg = Z.ReducePrimal('dd');
@@ -28,6 +18,43 @@ prg = Z.ReducePrimal('dd');
 xO = prg.RecoverPrimal(x);
 success = prg.CheckPrimal(x);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 clear all;
