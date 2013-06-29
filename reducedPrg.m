@@ -1,4 +1,4 @@
-classdef ReducedPrg < frlibPrg
+classdef reducedPrg < frlibPrg
 
     properties
         T
@@ -6,7 +6,7 @@ classdef ReducedPrg < frlibPrg
 
     methods
     
-        function self = ReducedPrg(A,b,c,K,T)
+        function self = reducedPrg(A,b,c,K,T)
            
             self@frlibPrg(A,b,c,K); 
 

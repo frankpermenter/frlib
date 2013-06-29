@@ -1,4 +1,4 @@
-function [A,b,T]= clean_linear(A,b)
+function [A,b,T]= cleanLinear(A,b)
     
     [~,R,P]=qr([A,b]',0);
     eqKeep = P( find(abs(diag(R)) > eps));

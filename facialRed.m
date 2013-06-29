@@ -1,4 +1,4 @@
-classdef FacialRed
+classdef facialRed
  
     methods(Static)
 
@@ -166,7 +166,7 @@ classdef FacialRed
         function [success,A,c,K,Deq,feq] = DiagDomDualIter(A,c,K,Deq,feq)
             %the extreme rays of DD include the extreme rays of D. Try 
             %reducing with D first since it is cheaper 
-            [success,A,c,K,Deq,feq] = FacialRed.DiagDualIter(A,c,K,Deq,feq);
+            [success,A,c,K,Deq,feq] = facialRed.DiagDualIter(A,c,K,Deq,feq);
 
             if (success == 0 && all(K.s > 1))
 

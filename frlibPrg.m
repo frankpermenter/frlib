@@ -35,7 +35,7 @@ classdef frlibPrg
 
         function [x,y] = Solve(self)
             
-            [A,b,T] = clean_linear(self.A,self.b); 
+            [A,b,T] = cleanLinear(self.A,self.b); 
             [x,y] = sedumi(A,b,self.c,self.K);                
             y = T*y;
 
@@ -141,13 +141,13 @@ classdef frlibPrg
             method = lower(method);       
 
             if (strcmp(method,'sdd'))
-                procDiag = @FacialRed.SDDPrimIter;
+                procDiag = @facialRed.SDDPrimIter;
             else
 
                 if (strcmp(method,'d'))
-                    procDiag = @FacialRed.DiagPrimIter;
+                    procDiag = @facialRed.DiagPrimIter;
                 else
-                    procDiag = @FacialRed.DiagDomPrimIter;
+                    procDiag = @facialRed.DiagDomPrimIter;
                 end
 
             end
@@ -189,7 +189,7 @@ classdef frlibPrg
             %    i
             %    T = blkdiag(T,UtoT(U{i}));
             %end
-            prg = ReducedPrg(A,b,c,K,T);
+            prg = reducedPrg(A,b,c,K,T);
 
         end
 
@@ -197,13 +197,13 @@ classdef frlibPrg
 
             method = lower(method); 
             if (strcmp(method,'sdd'))
-                procDiag = FacialRed.SDDDualIter;
+                procDiag = facialRed.SDDDualIter;
             else
 
                 if (strcmp(method,'d'))
-                    procDiag = @FacialRed.DiagDualIter;
+                    procDiag = @facialRed.DiagDualIter;
                 else
-                    procDiag = @FacialRed.DiagDomDualIter;
+                    procDiag = @facialRed.DiagDomDualIter;
                 end
        
             end
@@ -217,13 +217,13 @@ classdef frlibPrg
                     break;
                 end
             end
-            [Deq,feq] = clean_linear(Deq,feq);
+            [Deq,feq] = cleanLinear(Deq,feq);
             A = [Deq',A];
             c = c(:);
             c = [feq;c]; 
             K.f = K.f + length(feq);
 
-            prg = ReducedPrg(A,b,c,K);
+            prg = reducedPrg(A,b,c,K);
         end
     end
 
