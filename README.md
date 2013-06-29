@@ -38,8 +38,7 @@ xO = prgR.RecoverPrimal(x);
 Inner approximations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%The following commands reduced an SDP using the non-negative
-%diagonal  matrices as an inner approximation of the PSD cone
+%The following commands reduced an SDP using the non-negative diagonal  matrices as an inner approximation of the PSD cone
 
 prg = prgR.ReduceDual('d');
 prg = prgR.ReducePrimal('d');
