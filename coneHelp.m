@@ -36,9 +36,9 @@ classdef coneHelp
                 K.r = 0;
             end
 
-            K.s = makeFat(K.s);    
-            K.r = makeFat(K.r);
-            K.q = makeFat(K.q);
+            K.s = K.s(:)';    
+            K.r = K.r(:)';
+            K.q = K.q(:)';
 
        end
 
@@ -143,9 +143,9 @@ classdef coneHelp
     end
 
     function [A,b] = DualIneq(self,U) 
-        c = makeFat(self.c);
+        c = self.c(:);
         A = U*self.A';
-        b = U*c'; 
+        b = U*c; 
     end
  
     function [A,b,v] = ineqDiagDomDual(self)
@@ -189,13 +189,13 @@ classdef coneHelp
         if  isempty(b)
             self.b = zeros(size(A,1),1);
         else
-            self.b = makeFat(b)';
+            self.b = b(:);
         end
 
         if  isempty(c)
             self.c = zeros(size(A,2),1);
         else
-            self.c = makeFat(c)';
+            self.c = c(:);
         end
         
         self = self.CalcIndices(self.K); 
@@ -408,7 +408,7 @@ classdef coneHelp
         [startPos,endPos]=self.GetIndx('s',num);
         c = self.c(startPos:endPos);
         for i=1:size(X,1)
-            y(i,1) = sum(makeFat(c).*X(i,:));
+            y(i,1) = sum(c(:)'.*X(i,:));
         end
 
     end
@@ -427,7 +427,7 @@ classdef coneHelp
     function [indxZero,Knew] = FindMustVanish(self,indx)
       
         indx = unique(indx);
-        indx = makeFat(indx)';
+        indx = indx(:);
         indxZero = indx';
         Knew = self.K;
 
