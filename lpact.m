@@ -13,24 +13,58 @@ function [act_flg,infeas,gplkError] = lpact(A_ineq,b_ineq,A_eq,b_eq)
 %   act_flag = -1
 %   infeas = 1
 
+% NumIneq = length(b_ineq);
+% NumEq = length(b_eq);
+% LenX = size(A_ineq,2);
+% A = [A_ineq;A_eq];
+% b = [b_ineq;b_eq];
+% 
+% lbnd = [-Inf*ones(LenX,1);];
+% ubnd = [Inf*ones(LenX,1);];
+% model.A = sparse(A);
+% model.obj = zeros(size(A,2),1);
+% model.rhs = full(b);
+% model.lb = lbnd;
+% model.ub = ubnd;
+% model.sense = char( ['<'*ones(NumIneq,1);'='*ones(NumEq,1)]);
+% params.outputflag = 0; 
+% result = gurobi(model,params);
+% flag = result.status;
+%     
+% 
+% result
+
 eps = 10^-12;
 gplkError = 0;
+infeas = 0;
+act_flg = [];
 
-NumEqIn = length(b_ineq);
 if ~exist('A_eq','var')
 	A_eq=[];
 end
 
+if ~exist('b_eq','var')
+	b_eq=[];
+end
 
+if b_ineq == 0
+    b_ineq = sparse(size(A_ineq,1),1);
+end
+
+NumEqIn = length(b_ineq);
 NumIneq = length(b_ineq);
 NumEq = length(b_eq);
 LenX = size(A_ineq,2);
 
-A = [A_ineq,eye(NumIneq),-b_ineq;];
-b = zeros(NumIneq,1);
+A = [A_ineq,speye(NumIneq),-b_ineq;];
+b = sparse(NumIneq,1);
+
+if (NumIneq == 0)
+    return
+end
 
 if (~isempty(b_eq))
-    A = [A;A_eq,zeros(NumEq,NumIneq),-b_eq];
+    A = [A;A_eq,sparse(NumEq,NumIneq),-sparse(b_eq)];
     b = [b;zeros(NumEq,1)];
 end
 

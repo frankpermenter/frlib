@@ -15,7 +15,6 @@ classdef frlibPrg
     
         function self = frlibPrg(A,b,c,K)
  
-            self.K = cleanK(K);
             self.A = A;
 
             if isempty(c)
@@ -29,8 +28,9 @@ classdef frlibPrg
             self.b = b(:);
             self.c = c(:);
       
-            self.Z = coneHelp(A,b,c,K);
-    
+            self.Z = coneHelp(A,b,c,K); 
+            self.K = self.Z.K;
+
         end
 
         function [x,y] = Solve(self)
@@ -63,8 +63,8 @@ classdef frlibPrg
         function success = CheckDual(self,y)
            
             eps = 10^-12;
-            [l,q,r,s]=GetDualSlack(y,self.A,self.c,self.K);
-
+            [l,q,r,s]=self.GetDualSlack(y);
+            pass = [];
             for i=1:length(q) 
                 pass(end+1) = self.CheckLor( q{i},eps);
             end
@@ -72,9 +72,39 @@ classdef frlibPrg
             for i=1:length(s)
                 pass(end+1) = self.CheckPSD( s{i},eps);
             end
-
+            success = all(pass == 1);
         end
 
+        function [nneg,lor,rlor,psd] = GetDualSlack(self,y)
+
+            K = self.K;
+            c = self.c;
+            A = self.A;
+            offset = K.f;
+            indx = 1:K.f;
+            freeDual = c(indx)' - y'*A(:,indx);
+
+            indx = offset+[1:offset+K.l];
+            nneg = c(indx)' - y'*A(:,indx);
+            offset = offset + K.l;
+
+            for i=1:length(K.q)
+                indx = offset + [1:K.q(i)];
+                lor{i} = c(indx)' - y'*A(:,indx);
+                offset = offset + K.q(i);
+            end
+
+            for i=1:length(K.r) 
+                indx = offset + [1:K.r(i)];
+                rlor{i} = c(indx)' - y'*A(:,indx);
+                offset = offset + K.r(i);
+            end
+            for i=1:length(K.s)
+                indx = offset + [1:K.s(i).^2];
+                psd{i} = mat(c(indx)' - y'*A(:,indx));
+                offset = offset + K.s(i).^2;
+            end
+        end
 
         function [nneg,lor,rlor,psd] = GetPrimalVars(self,x)
 

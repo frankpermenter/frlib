@@ -1,8 +1,79 @@
-clear all;
 
+clear all;
+load ./tests/prob_data_2_for_frank.mat;
+A = A';
+tic,
+Z = frlibPrg(A,b,c,K);
+prg = Z.ReducePrimal('dd');
+[x,y] = prg.Solve();
+xO = prg.RecoverPrimal(x);
+success = prg.CheckPrimal(x);
+
+
+%K.s = K.s(K.s > 0)
+%Z = FacialRed(A,b,c,K);
+%[A,b,c,K,T] = Z.ReducePrimal('sdd');;
+%break;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+load bench/files/hinf12.mat;
+
+%load bench/files/minphase.mat;
+%A = At';
+
+Z = frlibPrg(A,b,c,K);
+prg = Z.ReducePrimal('dd');
+[x,y] = prg.Solve();
+xO = prg.RecoverPrimal(x);
+success = prg.CheckPrimal(x);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+clear all;
+load bench/files/hinf13.mat;
+
+%load bench/files/minphase.mat;
+%A = At';
+
+Z = frlibPrg(A,b,c,K);
+prg = Z.ReducePrimal('sdd');
+[x,y] = prg.Solve();
+xO = prg.RecoverPrimal(x);
+success = prg.CheckPrimal(x);
+break;
+
+syms y1 y2 y3
+
+M = [y1,0,0;0,-y1,0;0,0,y2];
+[A,c,K]=LMI2Sedumi(M);
+
+
+
+M = [y1,y1,0;y1,y1,0;0,0,y2];
+[A,c,K]=LMI2Sedumi(M);
+T = FacialRed(A,[],c,K);
+[An,bn,cn,Kn] = T.ReduceDual('dd');
+Kn
+break;
+
+
+
+
+
+clear all;
+load ./tests/prob_data_2_for_frank.mat;
+Z = FacialRed(A,b,c,K);
+[Anew,bnew,cnew,Knew,T] = Z.ReducePrimal('d');;
+
+[x,y]=sedumi(Anew,bnew,cnew,Knew);
+
+CheckPrimal(T*x,A,b,K);
+break;
 %%%%%%%%%%%%%%%%%%%%%
 % Lorentz and Linear
 %%%%%%%%%%%%%%%%%%%%%
+clear A b K c
 K.l = 5;
 K.q = [4];
 
@@ -12,7 +83,7 @@ A(1,1) = 1;
 A(1,6) = 1;
 b = 0;
 
-[Knew,Anew,T] = DiagFR(K,A,b);
+[Knew,Anew,T] = PolyFR(K,A,b);
 
 if (Knew.l == 4 && Knew.q == 0)
    display('Test Pass')   
@@ -33,8 +104,7 @@ A(1,1) = 1;
 A(1,6) = 1;
 b = 0;
 
-[Knew,Anew,T] = DiagFR(K,A,b);
-
+[Knew,Anew,T] = PolyFR(K,A,b);
 if (Knew.q(1) == 0 && Knew.q(2) == 0)
    display('Test Pass')   
 else
@@ -61,7 +131,7 @@ A(2,3) = 1;
 A(2,10) = 1;
 b(2,1) = 0;
 
-[Knew,Anew,T] = DiagFR(K,A,b);
+[Knew,Anew,T] = PolyFR(K,A,b);
 
 if (Knew.s == K.s-1)
    display('Test Pass')   
@@ -84,7 +154,7 @@ A = sparse(1,10);
 A(1,1) = 1;
 A(1,7) = 1;
 b = 0;
-[Knew,Anew,T] = DiagFR(K,A,b);
+[Knew,Anew,T] = PolyFR(K,A,b);
 
 if (Knew.l == 1 && Knew.r(1) == 4)
    display('Test Pass')   
@@ -111,11 +181,17 @@ b(1,1) = 0;
 A(2,3) = 1;
 b(2,1) = 0;
 
-[Knew,Anew,T] = DiagFR(K,A,b);
+[Knew,Anew,T] = PolyFR(K,A,b);
 
 if (Knew.l == 2 )
    display('Test Pass')   
 else
    display('Test Failed') 
 end
+
+
+
+
+
+
 
