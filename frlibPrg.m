@@ -54,9 +54,8 @@ classdef frlibPrg
                 pass(end+1) = self.CheckPSD( s{i},eps);
             end
 
-            pass(end+1) = norm(self.A*x-self.b) < eps;
-            norm(self.A*x-self.b)
-            success = pass;
+            pass(end+1) = norm(self.A*x-self.b) < 10^-4;
+            success = all(pass==1);
         end
 
 

@@ -1,22 +1,27 @@
 
 clear all;
-load ./test/hybridLyap.mat;
+load hybridLyap.mat;
 A = A';
 Z = frlibPrg(A,b,c,K);
 prg = Z.ReducePrimal('dd');
 [x,y] = prg.Solve();
 xO = prg.RecoverPrimal(x);
-success = prg.CheckPrimal(x);
-
+pass  = prg.CheckPrimal(x);
+if ~(pass)
+    error('Test case failed')
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-load bench/files/hinf12.mat;
+load testDual.mat;
 
 
 Z = frlibPrg(A,b,c,K);
-prg = Z.ReducePrimal('dd');
+prg = Z.ReduceDual('dd');
 [x,y] = prg.Solve();
-xO = prg.RecoverPrimal(x);
-success = prg.CheckPrimal(x);
+pass  = prg.CheckDual(x);
+if ~(pass)
+    error('Test case failed')
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
