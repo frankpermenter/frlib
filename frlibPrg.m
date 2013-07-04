@@ -211,7 +211,8 @@ classdef frlibPrg
             Deq = ones(0,size(A,1));feq=[];
 
             while (1)
-                [success,A,c,K,Deq,feq] = feval(procDiag,A,c,K,Deq,feq); 
+                [success,A,c,K,Deq,feq] = feval(procDiag,A,c,K,Deq,feq);
+				[Deq,feq] = cleanLinear(Deq,feq);
                 if success == 0
                     break;
                 end
