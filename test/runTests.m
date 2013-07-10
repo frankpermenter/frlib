@@ -24,7 +24,6 @@ if ~(pass)
     error('Test case failed')
 end
 prg
-break;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load testDual.mat;
 
