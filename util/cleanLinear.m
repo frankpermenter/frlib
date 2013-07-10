@@ -1,17 +1,21 @@
 function [A,b,T]= cleanLinear(A,b)
-    
+
+
+    if (b == 0)
+        b = zeros(size(A,1),1);
+    end
+
     R = qr(sparse([A,b]'));
-    [r,c] = find(R);
-    %the first non-zero entry on a row implies
-    %the column (e.g. equation) is linearly independent
-    [~,indx] = unique(r,'first');	
-    eqKeep = c(indx);
+	[r,c] = find(R);
+	%the first non-zero entry on a row implies
+	%the column (e.g. equation) is linearly independent
+	[~,indx] = unique(r,'first');	
+	eqKeep = c(indx);
 	
-    %must be non-zero and must be first col
     eqRmv = setdiff(1:size(A,1),eqKeep);
-	
-    T = speye(size(A,1));
-	
+
+    %a map that maps dual variables for original system to updated
+    T = speye(size(A,1));	
     T(eqRmv,:) = 0;
     T = T(:,eqKeep);
 

@@ -29,25 +29,120 @@ classdef facialRed
             catch
                 success = 0;
             end
+            S =[];
             if success
+                for i=1:length(S)
+                    Sn = sol.eval(S{i});
+                    S = [S,Sn(:)']
+                end
+                [A,c,K,T] = facialRed.reducePrimal(Z,S);
+            end 
+        end
 
-                A = A(:,1:Z.GetIndx('s',1)-1); 
-                c = c(1:Z.GetIndx('s',1)-1)'; 
-                c = c(:)';
+
+        function [success,K,A,c,T] = DPrimIter(A,b,c,K)
+            
+            T = [];
+            Z = coneHelp(A,b,c,K);
+            prg = spotsosprg;
+            m = size(Z.A,1);
+            tr = 0;
+            
+            [prg,u] = prg.newFree(m);
+            prg = prg.withEqs(u'*Z.b);
+            
+            for i=1:length(K.s)  
+                if (K.s(i) > 1 )
+                    [prg,Stemp] = prg.newPos(K.s(i));
+                    Stemp = diag(Stemp);
+                    %[prg,Stemp] = prg.newSDD(K.s(i));   
+                    S2 = mat(Z.AdjA(u,i));
+                    S{i} = S2;
+                    prg = prg.withEqs(Stemp-S2);
+                    tr = tr + trace(Stemp);
+                end
+            end
+            prg = prg.withEqs(tr-1);
+            try
+                sol = prg.optimize();
+                success = sol.info.pinf == 0 & sol.info.numerr == 0;
+            catch
+                success = 0;
+            end
+            if success
+                for i=1:length(S)
+                    Sn{i} = sol.eval(S{i});
+                    Sd{i} = double(Sn{i});
+                end
+                [A,c,K,T] = facialRed.reducePrimal(Z,Sn);
+            end 
+        end
+
+        function [success,K,A,c,T] = DDPrimIter(A,b,c,K)
+            
+            T = [];
+            Z = coneHelp(A,b,c,K);
+            prg = spotsosprg;
+            m = size(Z.A,1);
+            tr = 0;
+            
+            [prg,u] = prg.newFree(m);
+            prg = prg.withEqs(u'*Z.b);
+            
+            for i=1:length(K.s)  
+                if (K.s(i) > 1 )
+                    [prg,Stemp] = prg.newDD(K.s(i));
+                    %[prg,Stemp] = prg.newSDD(K.s(i));   
+                    S2 = mat(Z.AdjA(u,i));
+                    S{i} = S2;
+                    prg = prg.withEqs(Stemp-S2);
+                    tr = tr + trace(Stemp);
+                end
+            end
+            prg = prg.withEqs(tr-1);
+            try
+                sol = prg.optimize();
+                success = sol.info.pinf == 0 & sol.info.numerr == 0;
+            catch
+                success = 0;
+            end
+            if success
+                for i=1:length(S)
+                    i
+                    Z.K.s
+                    Sn{i} = sol.eval(S{i});
+                    Sd{i} = double(Sn{i});
+                end
+                [A,c,K,T] = facialRed.reducePrimal(Z,Sn);
+            end 
+
+        end
+
+
+
+        function [A,c,K,T] = reducePrimal(Z,SblkDiag)
+
+                offset = Z.GetIndx('s',1)-1;
+                A = Z.A(:,1:Z.GetIndx('s',1)-1); 
+                c = Z.c(1:Z.GetIndx('s',1)-1); 
+                K = Z.K;
+                T = [];
+
                 for i = 1:length(K.s) 
                 
-                    V = double(sol.eval(S{i}));
-                    [U,sd] = nullqr(V);
+                    [s,e] = Z.GetIndx('s',i);
+                    S = mat( SblkDiag(s-offset:e-offset));
+                    [U,sd] = nullqr(S);
                     if (K.s(i) > 0)
                         K.s(i) = size(U,2);
                         A = [A,Z.ConjA(U,i)];
                         c = [c,Z.ConjC(U,i)];
                     end
                     T{i} = U;
-
                 end
-           end 
         end
+
+
 
         function [success,A,c,K,Deq,feq] = SDDDualIter(A,c,K,Deq,feq)
 
@@ -55,13 +150,19 @@ classdef facialRed
             prg = spotsosprg;
 
             tr = 0;
+            SdotM = 0;
+            Cdot = 0;
+
             for i=1:length(K.s)  
                 [prg,Stemp] = prg.newSDD(K.s(i));
                 S{i} = Stemp;
-                prg = prg.withEqs(Z.AdotX(Stemp,i));
+                SdotM = SdotM + Z.AdotX(Stemp,i);
+                SdotC = SdotC + Z.CdotX(Stemp,i);
                 tr = tr + trace(Stemp);
             end
-
+            [prg,lam]  = prg.newFree(length(feq));
+            prg = prg.withEqs(SdotM+Deq'*lam);
+            prg = prg.withEqs(SdotC+Deq'*lam);
             prg = prg.withEqs(tr-1);
             try
                 sol = prg.optimize();
@@ -71,11 +172,258 @@ classdef facialRed
             end
 
             if success
-                A = A(:,1:Z.GetIndx('s',1)-1); 
-                c = c(1:Z.GetIndx('s',1)-1); 
+                [A,c,K,Deq,feq] = facialRed.reduceDual(Z,S);
+            end 
+
+        end
+
+
+        function [success,A,c,K,Deq,feq] = DDualIter(A,c,K,Deq,feq)
+            Z = coneHelp(A,[],c,K);
+            prg = spotsosprg;
+
+            tr = 0;
+            SdotM = 0;
+            SdotC = 0;
+
+            for i=1:length(K.s)  
+                [prg,Stemp] = prg.newPos(K.s(i));
+                Stemp = diag(Stemp);
+                S{i} = Stemp;
+                SdotM = SdotM + Z.AdotX(Stemp,i);
+                SdotC = SdotC + Z.CdotX(Stemp,i);
+                tr = tr + trace(Stemp);
+            end
+
+            if length(feq) > 0
+                [prg,lam]  = prg.newFree(length(feq));
+                DeqLam = Deq'*lam;
+                feqLam = feq'*lam;
+            else
+                DeqLam = 0; feqLam = 0;
+            end
+
+            prg = prg.withEqs(SdotM+DeqLam);
+            prg = prg.withEqs(SdotC+feqLam);
+            prg = prg.withEqs(tr-1);
+
+            try
+                sol = prg.optimize();
+                success = sol.info.pinf == 0;
+            catch
+                success = 0;
+            end
+        
+
+            if success
+                for i=1:size(S)
+                    Sn{i} = sol.eval(S{i});
+                end
+                [A,c,K,DeqN,feqN] = facialRed.reduceDual(Z,Sn);
+                Deq = [Deq;DeqN];
+                feq = [feq;feqN];
+            end 
+
+        end
+
+        function [x,numErr,infeas] = solveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+
+            gurobiExists = ~isempty(which('gurobi'));
+            numErr = 0;
+            infeas = 0; 
+            if (gurobiExists)
+
+                model.A = sparse([Aineq;Aeq]);
+                model.obj = c;
+                model.rhs = full([bineq;beq]);
+                model.lb = lbnd;
+                model.ub = ubnd;
+                model.sense = char( ['<'*ones(length(bineq),1);'='*ones(length(beq),1)]);
+                
+                params.method = 1;
+                params.outputflag = 1;
+                result = gurobi(model,params);
+                flag = result.status;
+
+                if (strcmp(flag,'INFEASIBLE'))
+                    infeas = 1;
+                    x = [];
+                    return;
+                else
+                    x = result.x;
+                end
+
+            end
+
+        end
+
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildDualLP(A,c,Feq,geq,W)
+
+            numGens = size(W,2);
+            numLam = size(Feq,1);   
+            numEq = size(A,1)+1;
+
+            Aeq1 = [A*W,-Feq'];
+            Aeq2 = [c(:)'*W,-geq'];
+            Aeq = [Aeq1;Aeq2];
+            Aeq = [Aeq,sparse(numEq,numGens)];
+            beq = zeros(size(Aeq,1),1);
+
+            Aineq = [-speye(numGens),sparse(numGens,numLam),speye(numGens)];
+            bineq = zeros(size(Aineq,1),1);
+            c = [zeros(numGens+numLam,1);-ones(numGens,1)];
+            ubnd = [Inf*ones(numGens+numLam,1);ones(numGens,1)];
+            lbnd = [-Inf*ones(numGens+numLam,1);zeros(numGens,1)];
+
+        end
+
+
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildDualLPTr(A,c,Feq,geq,W)
+
+            numGens = size(W,2);
+            numLam = size(Feq,1);   
+            numEq = size(A,1)+1;
+
+            Aeq1 = [A*W,-Feq'];
+            Aeq2 = [c(:)'*W,-geq'];
+
+            AeqTr = [ones(1,numGens),sparse(1,numLam)];
+            beqTr = 1;
+
+            Aeq = [Aeq1;Aeq2;AeqTr];
+            beq = zeros(size(Aeq,1),1);
+            beq(end) = 1;
+            
+            c = [zeros(numGens+numLam,1)];
+            ubnd = [Inf*ones(numGens+numLam,1)];
+            lbnd = [zeros(numGens+numLam,1)];
+            Aineq = []; bineq = [];
+        end
+
+
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildDualLP2(A,c,Feq,geq,W)
+
+            numGens = size(W,2);
+            numLam = size(Feq,1);   
+            numEq = size(A,1)+1+1;
+
+            Aeq1 = [A*W,Feq'];
+            Aeq2 = [c(:)'*W,geq'];
+
+            Aeq = [Aeq1;Aeq2];
+            beq = zeros(size(Aeq,1),1);
+            
+            AeqTr = [ones(1,numGens),sparse(1,numLam)];
+            Aeq = [Aeq;AeqTr];
+            beq = [beq;1];
+
+            Aeq = [Aeq,sparse(numEq,numGens)];
+            Aineq = [-speye(numGens),sparse(numGens,numLam),speye(numGens)];
+            bineq = zeros(size(Aineq,1),1);
+            c = [zeros(numGens+numLam,1);-ones(numGens,1)];
+            ubnd = [Inf*ones(numGens+numLam,1);ones(numGens,1)];
+            lbnd = [-Inf*ones(numGens+numLam,1);zeros(numGens,1)];
+
+        end
+
+
+
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildPrimLP(A,b,W)
+
+            numGens = size(W,1);
+            numMu = size(A,1);   
+            
+            Aeq1 = [-W',A'];
+            Aeq2 = [sparse(1,numGens),b'];
+            %todo: remove obvious linear dependencies due to symmetry
+            %of Aeeq
+            Aeq = [Aeq1;Aeq2];
+            Aeq = [Aeq,sparse(size(Aeq,1),numGens)];
+            
+            beq = zeros(size(Aeq,1),1);
+            Aineq = [-speye(numGens),sparse(numGens,numMu),speye(numGens)];
+            bineq = zeros(size(Aineq,1),1);
+            c = [zeros(numGens+numMu,1);-ones(numGens,1)];
+            ubnd = [Inf*ones(numGens+numMu,1);ones(numGens,1)];
+            lbnd = [-Inf*ones(numGens+numMu,1);zeros(numGens,1)];
+            
+        end
+
+
+
+        
+        function [success,K,A,c,T] = DDomPrimIter(A,b,c,K)
+           
+            T = []; 
+            Z = coneHelp(A,[],c,K);
+            W = Z.extRaysDD()';           
+
+          %  W = Z.matsFromSubMat(ones(3,3))';
+            
+            numGens = size(W,2); 
+            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(A,b,W');
+            [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            success = numerr == 0 & infeas == 0 & -cost'*x > 0;
+
+            if success
+                xtemp = x(1:numGens,1);
+                S = W*xtemp;
+                xtemp = xtemp > max(xtemp)*.0001;
+                spanS = W*xtemp;
+                [A,c,K,T] = facialRed.reducePrimal(Z,spanS);
+            end 
+
+        end
+
+        function [success,A,c,K,Deq,feq] = DDDualIter(A,c,K,Deq,feq)
+
+            Z = coneHelp(A,[],c,K);
+            W = Z.extRaysDD()';           
+            numGens = size(W,2);
+            
+            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(A,c,Deq,feq,W);
+            [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            success = numerr == 0 & infeas == 0 & -cost'*x > 0;
+            if success
+                xtemp = x(1:numGens,1);
+                S = W*xtemp;
+                xtemp = xtemp > max(xtemp)*.0001;
+                spanS = W*xtemp;
+                [A,c,K,DeqN,feqN] = facialRed.reduceDual(Z,spanS);
+                Deq = [Deq;DeqN];
+                feq = [feq;feqN];
+            end 
+
+        end
+
+
+
+
+
+
+
+
+        function [A,c,K,Deq,feq] = reduceDual(Z,SblkDiag)
+
+                offset = Z.GetIndx('s',1)-1;
+                A = Z.A(:,1:Z.GetIndx('s',1)-1); 
+                c = Z.c(1:Z.GetIndx('s',1)-1); 
+                K = Z.K;
+                Deq = []; feq = [];
                 for i = 1:length(K.s) 
-                    V = double(sol.eval(S{i}));
-                    U = nullqr(V);
+                    [s,e] = Z.GetIndx('s',i);
+                    S = mat( SblkDiag(s-offset:e-offset));
+                    if ( any( eigs(S) <= -10^-12))
+                        error('S must be PSD');
+                    end
+
+                    if (abs(any(any(S-S'))) > 10^-12)
+                        error('S must be symmetric');
+                    end
+
+                    V = S;
+                    U = nullqr(full(V));
+                    U(abs(U) <10-11) = 0;
                     if (K.s(i) > 0)
                         K.s(i) = size(U,2);
                         A = [A,Z.ConjA(U,i)];
@@ -86,9 +434,9 @@ classdef facialRed
                         end
                     end
                 end
-            end 
-
         end
+
+
 
         function [success,K,A,c,T] = DiagPrimIter(A,b,c,K)
 
@@ -99,7 +447,6 @@ classdef facialRed
            [activeIneq,infeas]= lpact(A_ineq,0,A,b);
             if (infeas)
                 success = 0;
-               % K.s = -1;
                 return 
             end
 
@@ -173,7 +520,6 @@ classdef facialRed
                 Z = coneHelp(A,[],c,K);
 
                 [A_ineq,b_ineq,V] = Z.ineqDiagDomDual();                                                   
-
                 activeIneq = find(lpact(A_ineq,b_ineq,Deq,feq));
                 success = length(activeIneq) > 0;
 

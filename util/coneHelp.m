@@ -112,42 +112,13 @@ classdef coneHelp
     methods
 
 
-    function [A,b] = innerPrdSubMatDualRetired(self,V)
-      
-        for i=1:length(self.K.s) 
-        
-            n = self.K.s(i);
-            k = size(V,1);
-            offset = self.Kstart.s(i)-1;
-
-            if n < k 
-                A = []; return
-            end
-
-            subMat = nchoosek(1:n,k); 
-            delta=diff(subMat,1,2);
-
-            %each row contains the indices of a submatrix
-            indices=[self.indxDiag{i}(subMat(:,1))',self.indxDiag{i}(subMat(:,1))'+delta,...
-                 self.indxDiag{i}(subMat(:,2))'-delta,self.indxDiag{i}(subMat(:,2))'];
-            M = size(self.A,1);            
-            Vrep = sparse(repmat(V(:),1,M)');
-            for j=1:size(indices,1)
-                A(:,j) = sum(self.A(:,indices(j,:)).*Vrep,2); 
-                b(j,1) = sum(self.c(indices(j,:)).*V(:));
-            end     
-
-            A = A';
-        end
-        
-    end
-
     function [A,b] = DualIneq(self,U) 
         c = self.c(:);
         A = U*self.A';
         b = U*c; 
     end
- 
+
+
     function [A,b,v] = ineqDiagDomDual(self)
        
         [Aineq1,b1,v1] = self.innerPrdSubMatDual(1);
@@ -159,6 +130,33 @@ classdef coneHelp
         v = [v1;v2;v3]; 
 
     end
+
+    function mats = matsFromSubMat(self,U)
+        mats =[];
+        for i=1:length(self.K.s)
+            [mats] = [mats;self.matsFromSubMat_i(U,i)];
+        end
+    end
+
+    function extR = extRaysDD(self)
+
+        [v1] = self.matsFromSubMat(1);
+        [v2] = self.matsFromSubMat([1,-1;-1,1]);
+        [v3] = self.matsFromSubMat([1,1;1,1]);
+       
+        extR = [v1;v2;v3]; 
+
+        num = 0;
+        for n=self.K.s
+            num = num+nchoosek(n,2)*2+n;
+        end
+        
+        if (num~=size(extR,1))
+            error('incorrect number of extreme rays')
+        end
+
+    end
+
 
     function [A,b,E] = innerPrdSubMatDual(self,V)
         b = []; E = []; A = []; 
@@ -182,6 +180,19 @@ classdef coneHelp
         A = self.A(:,startPos:endPos);
     end
 
+
+    function A = symmetrizeA(self,cone,num)
+        A = self.A;
+        for i=1:length(self.K.s)
+            [startPos,endPos] = self.GetIndx('s',i); 
+            for j=1:size(A,1)
+                Atemp = mat(self.A(j,startPos:endPos)*1/2);
+                Atemp = Atemp+Atemp'; 
+                A(j,startPos:endPos) = Atemp(:)';
+            end
+        end
+    end
+
     function self = coneHelp(A,b,c,K) 
         self.K = self.cleanK(K);
         self.A = A;
@@ -202,6 +213,7 @@ classdef coneHelp
         if self.NumVar ~= size(self.A,2)
             error(['Cone sizes do not match columns of A. Num vars: ',num2str(self.NumVar),' Num Col: ', num2str(size(self.A,2))]);
         end
+
     end
  
 
@@ -252,9 +264,72 @@ classdef coneHelp
 
         [startPos,endPos]=self.GetIndx('s',num);
         A = sum(A(:,startPos:endPos),1);
-
-        [U,V] = nullqr(mat(A)'); 
+        [U,V] = nullqr(mat(A)); 
+       % [U] = null(mat(A)'); 
+       % V = mat(A)';
     end
+
+    function A = matsFromSubMat_i(self,V,num)
+     
+        n = self.K.s(num);
+        k = size(V,1);
+        offset = self.Kstart.s(num)-1;
+
+        if n < k 
+            A = []; return
+        end
+
+        posArray = nchoosek(1:n,k); 
+        numSubMat = size(posArray,1);
+        
+        nnzA = numSubMat*nnz(V);
+
+        cnt = 1;
+        cols = zeros(nnzA,1);
+        rows = zeros(nnzA,1);
+        val = zeros(nnzA,1);
+        for j=1:numSubMat
+            
+            %get row/col defining the submat
+            pos = posArray(j,:);   
+            
+            %get first entry of submat
+            indxStart = n*(pos(1)-1)+pos(1);
+
+            %how far apart are defining rows 
+            deltaRow = [0,cumsum(diff(pos))];
+
+            %indices of the first column of sub mat
+            firstCol = indxStart(1) + deltaRow;
+      
+            rowPos = j*ones(length(k),1);
+            %loop across columns
+            for p = 1:length(pos) 
+                cols(cnt:cnt+k-1) = firstCol + n*deltaRow(p)+offset;
+                rows(cnt:cnt+k-1) = rowPos;
+                val(cnt:cnt+k-1) = V(:,p);
+                cnt = cnt+k;
+            end
+        end
+
+        A = sparse(rows,cols,val,numSubMat,self.NumVar);
+
+    end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     function A = innerPrdSubMat(self,V,num)
@@ -380,16 +455,19 @@ classdef coneHelp
         
     end
 
+
+
     function y = AdotX(self,X,num) 
 
         [startPos,endPos]=self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
         m = size(A,1);
-        X = X(:)';  
-        Xrep = repmat(X,m,1);
-        y = sum(Xrep.*A,2); 
+        X = X(:);  
+        y = A*X; 
 
     end
+
+
 
     function y = AdjA(self,u,num) 
 
@@ -406,10 +484,9 @@ classdef coneHelp
     function y = CdotX(self,X,num) 
 
         [startPos,endPos]=self.GetIndx('s',num);
-        c = self.c(startPos:endPos);
-        for i=1:size(X,1)
-            y(i,1) = sum(c(:)'.*X(i,:));
-        end
+        C = self.c(startPos:endPos);
+        X = X(:);  
+        y = C(:)'*X; 
 
     end
 

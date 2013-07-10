@@ -1,5 +1,6 @@
 
 function T =  UtoT(U)
+    
     [N,M]=size(U);
 
     %linear map of q(:) to (U*q)(:)

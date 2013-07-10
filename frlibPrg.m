@@ -34,17 +34,45 @@ classdef frlibPrg
         end
 
         function [x,y] = Solve(self)
-            
             [A,b,T] = cleanLinear(self.A,self.b); 
             [x,y] = sedumi(A,b,self.c,self.K);                
             y = T*y;
+        end
+
+
+        function [dimOut] = GetSubSpaceDim(self,Primal)
+
+            A = cleanLinear(self.A,self.b);
+            dimC = self.K.l + self.K.q + self.K.r;
+            dimC = dimC + sum(self.K.s.^2/2+self.K.s/2);
+        
+            dimP = self.K.f + dimC - size(A,1);
+
+            A = cleanLinear(self.A,self.b*0); 
+            dimD = size(A,1);
+
+            dualEqs = cleanLinear(self.A(:,1:self.K.f),self.c(1:self.K.f)); 
+            dimD = dimD - size(dualEqs,2);
+
+            if (dimP + dimD ~= dimC)
+                %error('dim calc error')
+            end
+
+            if Primal
+                dimOut = dimP;
+            else
+                dimOut = dimD;
+            end
 
         end
 
         function success = CheckPrimal(self,x)
+        
             eps = 10^-8; 
             [l,q,r,s]=self.GetPrimalVars(x);
             pass = [];
+
+            pass(end+1) = all(l >= 0);
 
             for i=1:length(q) 
                 pass(end+1) = self.CheckLor( q{i},eps);
@@ -83,7 +111,7 @@ classdef frlibPrg
             indx = 1:K.f;
             freeDual = c(indx)' - y'*A(:,indx);
 
-            indx = offset+[1:offset+K.l];
+            indx = offset+[1:K.l];
             nneg = c(indx)' - y'*A(:,indx);
             offset = offset + K.l;
 
@@ -103,15 +131,15 @@ classdef frlibPrg
                 psd{i} = mat(c(indx)' - y'*A(:,indx));
                 offset = offset + K.s(i).^2;
             end
+
         end
 
         function [nneg,lor,rlor,psd] = GetPrimalVars(self,x)
 
             K = self.K;
             offset = K.f;
-            indx = 1:K.f;
 
-            indx = offset+[1:offset+K.l];
+            indx = offset+[1:K.l];
             nneg = x(indx);
             offset = offset + K.l;
 
@@ -141,14 +169,21 @@ classdef frlibPrg
 
             if (strcmp(method,'sdd'))
                 procDiag = @facialRed.SDDPrimIter;
-            else
+            end
 
-                if (strcmp(method,'d'))
-                    procDiag = @facialRed.DiagPrimIter;
-                else
-                    procDiag = @facialRed.DiagDomPrimIter;
-                end
+            if (strcmp(method,'d'))
+                procDiag = @facialRed.DiagPrimIter;
+                %procDiag = @facialRed.DPrimIter;
+            end
 
+            if (strcmp(method,'dd'))
+               % procDiag = @facialRed.DDPrimIter;
+                procDiag = @facialRed.DiagDomPrimIter;
+            end
+
+            if (strcmp(method,'ddmax'))
+               % procDiag = @facialRed.DDPrimIter;
+                procDiag = @facialRed.DDomPrimIter;
             end
 
             A = self.A; b = self.b; c = self.c; K = self.K;
@@ -158,6 +193,8 @@ classdef frlibPrg
             while (1)
 
                 [success,K,A,c,Tform] = feval(procDiag,A,b,c,K);
+                [A,b] = cleanLinear(A,b);
+
                 if success == 0
                    break;
                 end
@@ -192,38 +229,66 @@ classdef frlibPrg
 
         end
 
-        function [prg] = ReduceDual(self,method)
+        function [prg] = ReduceDual(self,method,maxIter)
+
+            if ~exist('maxIter','var')
+                maxIter = Inf;
+            end
 
             method = lower(method); 
             if (strcmp(method,'sdd'))
                 procDiag = facialRed.SDDDualIter;
-            else
-
-                if (strcmp(method,'d'))
-                    procDiag = @facialRed.DiagDualIter;
-                else
-                    procDiag = @facialRed.DiagDomDualIter;
-                end
-       
             end
+
+            if (strcmp(method,'d'))
+                procDiag = @facialRed.DiagDualIter;
+                %procDiag = @facialRed.DDualIter;
+            end
+
+            if strcmp(method,'dd')
+                procDiag = @facialRed.DiagDomDualIter;
+            end
+
+            if strcmp(method,'dmax')
+                procDiag = @facialRed.DDDualIter;
+            end
+       
 
             A = self.A; b = self.b; c = self.c; K = self.K;
             Deq = ones(0,size(A,1));feq=[];
-
+           
+           %convert these into equations on dual variables 
+            if (self.K.f > 0)
+                Deq = A(:,1:self.K.f)';
+                feq = c(1:self.K.f);
+                feq = feq(:);
+                c = c(self.K.f+1:end);
+                K.f = 0;
+                A = A(:,self.K.f+1:end);
+            end
+           
+            cnt = 0; 
             while (1)
                 [success,A,c,K,Deq,feq] = feval(procDiag,A,c,K,Deq,feq);
 				[Deq,feq] = cleanLinear(Deq,feq);
+                cnt = cnt + 1; 
+            
+                if cnt > maxIter
+                    break;
+                end
+            
                 if success == 0
                     break;
                 end
             end
-            [Deq,feq] = cleanLinear(Deq,feq);
+
+            %convert linear constraints into free variables
             A = [Deq',A];
             c = c(:);
             c = [feq;c]; 
             K.f = K.f + length(feq);
-
             prg = reducedPrg(A,b,c,K);
+
         end
     end
 
