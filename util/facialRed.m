@@ -214,13 +214,13 @@ classdef facialRed
                     [s,e] = Z.GetIndx('s',i);
                     S = mat(SblkDiag(s-offset:e-offset));
                
-                    if ( any( eigs(S) <= -10^-12))
-                        error('S must be PSD');
-                    end
+                    %if ( any( eigs(S) <= -10^-12))
+                    %    error('S must be PSD');
+                    %end
 
-                    if  any(any(abs(S-S') > 10^-12))
-                        error('S must be symmetric');
-                    end
+                    %if  any(any(abs(S-S') > 10^-12))
+                    %    error('S must be symmetric');
+                    %end
 
                     V = S;
                     U = nullqr(V);
