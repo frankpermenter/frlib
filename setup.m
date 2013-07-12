@@ -9,7 +9,7 @@ function setup()
     end
 
     if ~gurobiExists
-%        error('Cannot find gurobi. Aborting...')
+        warning('Gurobi not detected. Install Gurobi for faster results.')
     end
 
     display('Updating path...')
