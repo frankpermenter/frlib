@@ -1,8 +1,8 @@
 function [ns,U] = nullqr(A)
-    save nulls.mat A;
+ 
     n = size(A,1);
     [q,r,e] = qr(A');
-    p = find( abs(diag(r)) < 10^-4);
+    p = find( abs(diag(r)) < 10^-8);
 
     if ~isempty(p) 
         indxNull = min(p):size(q,2);
@@ -13,6 +13,7 @@ function [ns,U] = nullqr(A)
     end
 
     ns = q(:,indxNull);
-    [r,c]= find(e(:,indxOrth));
+    [r,~] = find(e(:,indxOrth));
     U  = A(:,r);
+   
 
