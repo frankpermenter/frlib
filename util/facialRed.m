@@ -13,14 +13,14 @@ classdef facialRed
             if (gurobiExists)
 
                 model.A = sparse([Aineq;Aeq]);
-                model.obj = c;
+                model.obj = full(c);
                 model.rhs = full([bineq;beq]);
-                model.lb = lbnd;
-                model.ub = ubnd;
+                model.lb = full(lbnd);
+                model.ub = full(ubnd);
                 model.sense = char( ['<'*ones(length(bineq),1);'='*ones(length(beq),1)]);
                 
                 params.method = 1;
-                params.outputflag = 1;
+                params.outputflag = 0;
                 result = gurobi(model,params);
                 flag = result.status;
 
@@ -62,13 +62,14 @@ classdef facialRed
             Aeq = [Aeq,sparse(numEq,numGens)];
             beq = sparse(size(Aeq,1),1);
 
-            [r,c] = find(Aeq);
-            rKeep = unique(r);
-            Aeq = Aeq(rKeep,:);
-            beq = beq(rKeep,1);
-            
+
             if size(Aeq,1) > size(Aeq,2)
                 [Aeq,beq] = cleanLinear(Aeq,beq);
+            else
+                [r,c] = find(Aeq);
+                rKeep = unique(r);
+                Aeq = Aeq(rKeep,:);
+                beq = beq(rKeep,1);
             end
            
             
@@ -96,15 +97,15 @@ classdef facialRed
             Aeq = [Aeq,sparse(size(Aeq,1),numGens)];
             beq = sparse(size(Aeq,1),1);
                  
-            %Remove zero equations
-            [r,c] = find(Aeq);
-            rKeep = unique(r);
-            Aeq = Aeq(rKeep,:);
-            beq = beq(rKeep,1);
             
-            %Remove dependent equations 
+            %Remove dependent equations.
             if size(Aeq,1) > size(Aeq,2)
                 [Aeq,beq] = cleanLinear(Aeq,beq);
+            else
+                [r,c] = find(Aeq);
+                rKeep = unique(r);
+                Aeq = Aeq(rKeep,:);
+                beq = beq(rKeep,1);
             end
             
             Aineq = [-speye(numGens),sparse(numGens,numMu),speye(numGens)];
