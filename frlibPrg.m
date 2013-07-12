@@ -30,7 +30,7 @@ classdef frlibPrg
       
             self.Z = coneHelp(A,b,c,K); 
             
-            notSymmetric = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A))));
+            notSymmetric = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A)))) > 10^-12;
             
             if (notSymmetric) 
                 error('columns of A must give symmetric matrices for psd variables');
