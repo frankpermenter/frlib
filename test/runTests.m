@@ -1,46 +1,62 @@
 
 clear all;
+
+testPass = [];
+
 load hybridLyap.mat;
 A = A';
-Z = frlibPrg(A,b,c,K);
+prg = frlibPrg(A,b,c,K);
 
 %diagonal
-prg = Z.ReducePrimal('d');
-[x,y] = prg.Solve();
-xO = prg.RecoverPrimal(x);
-pass  = prg.CheckPrimal(x);
-pass = pass & all( prg.K.s ==[6 56 11 1 1 0 11 1 1 0 11 11]);
-if ~(pass)
-    error('Test case failed')
+display('Checking diagonal fr')
+prgD = prg.ReducePrimal('d');
+[x,y] = prgD.Solve();
+x0 = prgD.RecoverPrimal(x);
+pass  = prg.CheckPrimal(x0);
+testPass(end+1) = pass & all( prgD.K.s == [6 56 11 1 1 0 11 1 1 0 11 11]);
+if ~(testPass(end))
+    warning('Test case failed')
+end
+display('Checking diagonally dominant fr')
+%diagonally dominant
+prgDD = prgD.ReducePrimal('dd');
+[x,y] = prgDD.Solve();
+x0 = prgDD.RecoverPrimal(x);
+x1 = prgD.RecoverPrimal(x0);
+pass  = prg.CheckPrimal(x1);
+testPass(end+1)  = pass & all( prgDD.K.s == [6 34 8 1 1 0 8 1 1 0 9 7]);
+if ~(testPass(end))
+    warning('Test case failed')
 end
 
-%diagonally dominant
-prg = Z.ReducePrimal('dd');
-[x,y] = prg.Solve();
-xO = prg.RecoverPrimal(x);
-pass  = prg.CheckPrimal(x);
-pass = pass & all( prg.K.s == [6 34 8 1 1 0 8 1 1 0 9 7]);
-if ~(pass)
-    error('Test case failed')
-end
-prg
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load testDual.mat;
+prg = frlibPrg(A,[],c,K);
+prgDD = prg.ReduceDual('dd');
+[~,y] = prgDD.Solve();
 
+testPass(end+1)  = prg.CheckDual(y) & prgDD.K.f == 3 & prgDD.K.s == 2;
 
-Z = frlibPrg(A,[],c,K);
-prg = Z.ReduceDual('dd');
-[x,y] = prg.Solve();
-pass  = prg.CheckDual(y);
-if ~(pass)
-    error('Test case failed')
+if ~(testPass(end))
+    warning('Test case failed')
 end
 
+
+prgD = prg.ReduceDual('d');
+[~,y] = prgD.Solve();
+
+testPass(end+1)  = prg.CheckDual(y) & prgDD.K.f == 3 & prgDD.K.s == 2;
+
+if ~(testPass(end))
+    warning('Test case failed')
+end
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-display('Test cases passed!')
+fprintf('%d of %d tests passed \n',sum(testPass),length(testPass))
 
 
 

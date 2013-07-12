@@ -1,12 +1,12 @@
 function [A,b,T]= cleanLinear(A,b)
 
-
     if (b == 0)
-        b = zeros(size(A,1),1);
+        b = sparse(size(A,1),1);
     end
-
+  
     R = qr(sparse([A,b]'));
-	[r,c] = find(R);
+    [r,c] = find(R);
+    
 	%the first non-zero entry on a row implies
 	%the column (e.g. equation) is linearly independent
 	[~,indx] = unique(r,'first');	

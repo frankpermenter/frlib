@@ -9,7 +9,7 @@ function setup()
     end
 
     if ~gurobiExists
-        error('Cannot find gurobi. Aborting...')
+%        error('Cannot find gurobi. Aborting...')
     end
 
     display('Updating path...')

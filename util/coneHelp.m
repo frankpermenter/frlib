@@ -111,89 +111,8 @@ classdef coneHelp
     
     methods
 
-
-    function [A,b] = DualIneq(self,U) 
-        c = self.c(:);
-        A = U*self.A';
-        b = U*c; 
-    end
-
-
-    function [A,b,v] = ineqDiagDomDual(self)
-       
-        [Aineq1,b1,v1] = self.innerPrdSubMatDual(1);
-        [Aineq2,b2,v2] = self.innerPrdSubMatDual([1,-1;-1,1]);
-        [Aineq3,b3,v3] = self.innerPrdSubMatDual([1,1;1,1]);
-        
-        A = [Aineq1;Aineq2;Aineq3];
-        b = [b1;b2;b3]; 
-        v = [v1;v2;v3]; 
-
-    end
-
-    function mats = matsFromSubMat(self,U)
-        mats =[];
-        for i=1:length(self.K.s)
-            [mats] = [mats;self.matsFromSubMat_i(U,i)];
-        end
-    end
-
-    function extR = extRaysDD(self)
-
-        [v1] = self.matsFromSubMat(1);
-        [v2] = self.matsFromSubMat([1,-1;-1,1]);
-        [v3] = self.matsFromSubMat([1,1;1,1]);
-       
-        extR = [v1;v2;v3]; 
-
-        num = 0;
-        for n=self.K.s
-            num = num+nchoosek(n,2)*2+n;
-        end
-        
-        if (num~=size(extR,1))
-            error('incorrect number of extreme rays')
-        end
-
-    end
-
-
-    function [A,b,E] = innerPrdSubMatDual(self,V)
-        b = []; E = []; A = []; 
-        for i=1:length(self.K.s)
-          Et = self.innerPrdSubMat(V,i);  
-          [At,bt] = self.DualIneq(Et); 
-          E = [E;Et];
-          A = [A;At];
-          b = [b;bt];
-        end
-
-    end
-
-    function [A,b] = innerPrdDiagDual(self)
-        A = self.A(:,cell2mat(self.indxDiag))';
-        b = self.c(cell2mat(self.indxDiag));
-    end
-
-    function A = getA(self,cone,num)
-        [startPos,endPos]=self.GetIndx(cone,num);
-        A = self.A(:,startPos:endPos);
-    end
-
-
-    function A = symmetrizeA(self,cone,num)
-        A = self.A;
-        for i=1:length(self.K.s)
-            [startPos,endPos] = self.GetIndx('s',i); 
-            for j=1:size(A,1)
-                Atemp = mat(self.A(j,startPos:endPos)*1/2);
-                Atemp = Atemp+Atemp'; 
-                A(j,startPos:endPos) = Atemp(:)';
-            end
-        end
-    end
-
     function self = coneHelp(A,b,c,K) 
+        
         self.K = self.cleanK(K);
         self.A = A;
         
@@ -215,24 +134,108 @@ classdef coneHelp
         end
 
     end
- 
-
-    function A = innerPrd(self,U,cone,num)
-
-        startPos = getfield(self.Kstart,cone);
-        startPos = startPos(num);
-        endPos = getfield(self.Kend,cone);
-        endPos = endPos(num);
         
-        A = sparse(1,startPos:endPos,U(:),1,self.NumVar);
+        
+    function A =  lowerTri(self,A)
+        %return
+        startIndx = self.GetIndx('s',1);
+        
+        if isempty(startIndx)
+            return;
+        end
+        
+        indx = [1:startIndx-1];
+        
+        for i=1:length(self.K.s)
+            indxDiag = self.indxDiag{i};
+            for j=1:self.K.s(i)
+               numIndx = self.K.s(i)-j;
+               indx = [indx,indxDiag(j):indxDiag(j)+numIndx];
+            end
+        end
+
+        A = A(:,[1:min(indx)-1,indx]);
+
+    end
+    
+    
+    function A =  upperTri(self,A)
+        
+        %return
+        [startIndx,endIndx] = self.GetIndx('s',1);
+        if isempty(startIndx)
+            return;
+        end
+        
+        indx = [1:startIndx-1];
+        
+        for i=1:length(self.K.s)
+            [~,endIndx] = self.GetIndx('s',i);
+            indxDiag = self.indxDiag{i};
+            N = self.K.s(i);
+            for j=1:self.K.s(i)
+               indx = [indx,indxDiag(j):N:endIndx];
+            end
+        end
+
+        A = A(:,[1:min(indx)-1,indx]);
+
+    end
+    
+    
+        
+    function mats = matsFromSubMat(self,U)
+        mats =[];
+        for i=1:length(self.K.s)
+            [mats] = [mats;self.matsFromSubMat_i(U,i)];
+        end
+    end
+
+    function extR = extRaysDD(self)
+
+        [v1] = self.matsFromSubMat(1);
+        [v2] = self.matsFromSubMat([1,-1;-1,1]);
+        [v3] = self.matsFromSubMat([1,1;1,1]);
+       
+        extR = [v1;v2;v3]; 
+        num = 0;
+
+        %for n = self.K.s
+        %    num = num+nchoosek(n,2)*2+n;
+        %end
+        
+        %if (num~=size(extR,1))
+        %    error('incorrect number of extreme rays')
+        %end
 
     end
 
+    function extR = extRaysD(self)
+        extR = self.matsFromSubMat(1);
+    end
+    
+    function A = symmetrizeA(self,cone,num)
+        A = self.A;
+        for i=1:length(self.K.s)
+            [startPos,endPos] = self.GetIndx('s',i); 
+            for j=1:size(A,1)
+                Atemp = mat(self.A(j,startPos:endPos)*1/2);
+                Atemp = Atemp+Atemp'; 
+                A(j,startPos:endPos) = Atemp(:)';
+            end
+        end
+    end
+
     function [startPos,endPos]= GetIndx(self,cone,num)
+        
         startPos = getfield(self.Kstart,cone);
-        startPos = startPos(num);
-        endPos = getfield(self.Kend,cone);
-        endPos = endPos(num);
+        if (startPos)
+            startPos = startPos(num);
+            endPos = getfield(self.Kend,cone);
+            endPos = endPos(num);
+        end
+    
+        
     end 
 
     function UAU = ConjA(self,U,num)  
@@ -240,14 +243,9 @@ classdef coneHelp
         [startPos,endPos]=self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
 
-    %   [N,M] = size(U);
-    %   UAU = spalloc(size(A,1),M*M,nnz(A));
         T = UtoT(U');
         UAU = (T * A')';
-%        for i=1:size(A,1)
-%            temp = U'*mat(A(i,:))*U;
-%            UAU(i,:) = temp(:)';
-%        end
+        
     end
 
 
@@ -258,15 +256,6 @@ classdef coneHelp
         temp = U'*mat(c)*U;
         UCU = temp(:)';
 
-    end
-
-    function [U,V] = computeU(self,A,num)
-
-        [startPos,endPos]=self.GetIndx('s',num);
-        A = sum(A(:,startPos:endPos),1);
-        [U,V] = nullqr(mat(A)); 
-       % [U] = null(mat(A)'); 
-       % V = mat(A)';
     end
 
     function A = matsFromSubMat_i(self,V,num)
@@ -317,134 +306,6 @@ classdef coneHelp
     end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    function A = innerPrdSubMat(self,V,num)
-     
-        n = self.K.s(num);
-        k = size(V,1);
-        offset = self.Kstart.s(num)-1;
-
-        if n < k 
-            A = []; return
-        end
-
-        posArray = nchoosek(1:n,k); 
-        numSubMat = size(posArray,1);
-        
-        nnzA = numSubMat*nnz(V);
-
-        cnt = 1;
-        cols = zeros(nnzA,1);
-        rows = zeros(nnzA,1);
-        val = zeros(nnzA,1);
-        for j=1:numSubMat
-            
-            %get row/col defining the submat
-            pos = posArray(j,:);   
-            
-            %get first entry of submat
-            indxStart = n*(pos(1)-1)+pos(1);
-
-            %how far apart are defining rows 
-            deltaRow = [0,cumsum(diff(pos))];
-
-            %indices of the first column of sub mat
-            firstCol = indxStart(1) + deltaRow;
-      
-            rowPos = j*ones(length(k),1);
-            for p = 1:length(pos) 
-                cols(cnt:cnt+k-1) = firstCol + n*deltaRow(p)+offset;
-                rows(cnt:cnt+k-1) = rowPos;
-                val(cnt:cnt+k-1) = V(:,p);
-                cnt = cnt+k;
-            end
-        end
-
-        A = sparse(rows,cols,val,numSubMat,self.NumVar);
-    end
-
-    function A = innerPrdDiag(self)
-
-        NumIneq = length(self.indxNNeg);
-        A = sparse(1:NumIneq,self.indxNNeg,-1,NumIneq,self.NumVar);
-
-    end
-
-
-    function A = innerPrdDD(self)
-
-        A = self.innerPrdDiag();
-
-        for i = 1:length(self.K.s)
-      
-            V = ones(2); 
-            A = [A;-self.innerPrdSubMat(V,i)];
-            V(2,1) = -1*V(2,1);
-            V(1,2) = -1*V(1,2);
-            A = [A;-self.innerPrdSubMat(V,i)];
-
-        end
-
-    end
-
-
-    function A = innerPrdFW(self,V)
-        
-        K = self.K;
-        %inner product all semidefinite variables 
-        %with matrix V
-        offset = K.f + K.l + sum(K.q) + sum(K.r);
-        NumVars = K.f + K.l + sum(K.q) + sum(K.r) + sum(K.s.^2);
-        A = 0*speye(1,NumVars);
-
-        cnt = 1;
-        k = size(V,1);
-
-        for i=1:length(K.s)
-            
-            n = K.s(i);
-            
-            if (n < k)
-                continue
-            end
-            posArray = nchoosek(1:n,k); 
-            for j=1:size(posArray,1)
-                pos = posArray(j,:);   
-                indxDiag = n*(pos-1)+pos;
-                delta = [0,cumsum(diff(pos))];
-                colOne = indxDiag(1) + delta;
-         
-                for k = 1:length(pos) 
-                    col = colOne + n*delta(k)+offset;
-                    A(cnt,col) = V(:,k);
-                end
-
-                cnt = cnt + 1;
-            end
-
-            offset = offset + K.s(i).^2;
-
-        end
-        [row,col] = find(A);
-        row = unique(row);
-        A = A(row,:);
-
-    end
-
     function [Aeq] = AtimesV(self,V,num)
 
         [startPos,endPos]=self.GetIndx('s',num);
@@ -455,8 +316,14 @@ classdef coneHelp
         
     end
 
+    function [beq] = CtimesV(self,V,num)
 
+        [startPos,endPos]=self.GetIndx('s',num);
+        C = self.c(startPos:endPos);
+        beq = mat(C)*V;
 
+    end
+        
     function y = AdotX(self,X,num) 
 
         [startPos,endPos]=self.GetIndx('s',num);
@@ -467,20 +334,6 @@ classdef coneHelp
 
     end
 
-
-
-    function y = AdjA(self,u,num) 
-
-        [startPos,endPos]=self.GetIndx('s',num);
-        A = self.A(:,startPos:endPos);
-        m = size(A,1);
-        y = 0; 
-        for i=1:m
-            y = y + A(i,:)*u(i);
-        end
-    end
-
-
     function y = CdotX(self,X,num) 
 
         [startPos,endPos]=self.GetIndx('s',num);
@@ -489,16 +342,6 @@ classdef coneHelp
         y = C(:)'*X; 
 
     end
-
-
-    function [beq] = CtimesV(self,V,num)
-
-        [startPos,endPos]=self.GetIndx('s',num);
-        C = self.c(startPos:endPos);
-        beq = mat(C)*V;
-
-    end
-
 
     %Find variables in cone that vanish if others vanish
     function [indxZero,Knew] = FindMustVanish(self,indx)
@@ -536,6 +379,7 @@ classdef coneHelp
             for i = cnstN
                 indxZero = [indxZero,self.Kstart.q(i)+1:self.Kend.q(i)];
             end 
+            
         end
 
         %Rotated lorentz constraints
@@ -564,8 +408,7 @@ classdef coneHelp
 
         if self.Kstart.s
             
-            indxS = indx(indx >= self.Kstart.s(1) & indx <= self.Kend.s(end));
-            
+            indxS = indx(indx >= self.Kstart.s(1) & indx <= self.Kend.s(end));           
             indxD = intersect(cell2mat(self.indxDiag),indxS);
            
             for indx=indxD

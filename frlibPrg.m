@@ -29,14 +29,23 @@ classdef frlibPrg
             self.c = c(:);
       
             self.Z = coneHelp(A,b,c,K); 
+            
+            notSymmetric = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A))));
+            
+            if (notSymmetric) 
+                error('columns of A must give symmetric matrices for psd variables');
+            end
+            
             self.K = self.Z.K;
 
         end
 
         function [x,y] = Solve(self)
+            
             [A,b,T] = cleanLinear(self.A,self.b); 
             [x,y] = sedumi(A,b,self.c,self.K);                
             y = T*y;
+            
         end
 
 
@@ -100,6 +109,7 @@ classdef frlibPrg
                 pass(end+1) = self.CheckPSD( s{i},eps);
             end
             success = all(pass == 1);
+            
         end
 
         function [nneg,lor,rlor,psd] = GetDualSlack(self,y)
@@ -126,6 +136,7 @@ classdef frlibPrg
                 rlor{i} = c(indx)' - y'*A(:,indx);
                 offset = offset + K.r(i);
             end
+            
             for i=1:length(K.s)
                 indx = offset + [1:K.s(i).^2];
                 psd{i} = mat(c(indx)' - y'*A(:,indx));
@@ -173,17 +184,10 @@ classdef frlibPrg
 
             if (strcmp(method,'d'))
                 procDiag = @facialRed.DiagPrimIter;
-                %procDiag = @facialRed.DPrimIter;
             end
 
             if (strcmp(method,'dd'))
-               % procDiag = @facialRed.DDPrimIter;
                 procDiag = @facialRed.DiagDomPrimIter;
-            end
-
-            if (strcmp(method,'ddmax'))
-               % procDiag = @facialRed.DDPrimIter;
-                procDiag = @facialRed.DDomPrimIter;
             end
 
             A = self.A; b = self.b; c = self.c; K = self.K;
@@ -192,7 +196,7 @@ classdef frlibPrg
             
             while (1)
 
-                [success,K,A,c,Tform] = feval(procDiag,A,b,c,K);
+                [success,A,c,K,Tform] = feval(procDiag,A,b,c,K);
                 [A,b] = cleanLinear(A,b);
 
                 if success == 0
@@ -220,11 +224,6 @@ classdef frlibPrg
                 T = U; 
             end
            
-            %T = speye(K.f);
-            %for i=1:length(U)
-            %    i
-            %    T = blkdiag(T,UtoT(U{i}));
-            %end
             prg = reducedPrg(A,b,c,K,T);
 
         end
@@ -242,17 +241,11 @@ classdef frlibPrg
 
             if (strcmp(method,'d'))
                 procDiag = @facialRed.DiagDualIter;
-                %procDiag = @facialRed.DDualIter;
             end
 
             if strcmp(method,'dd')
                 procDiag = @facialRed.DiagDomDualIter;
             end
-
-            if strcmp(method,'dmax')
-                procDiag = @facialRed.DDDualIter;
-            end
-       
 
             A = self.A; b = self.b; c = self.c; K = self.K;
             Deq = ones(0,size(A,1));feq=[];
