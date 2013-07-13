@@ -228,15 +228,11 @@ classdef frlibPrg
 
         end
 
-        function [prg] = ReduceDual(self,method,maxIter)
-
-            if ~exist('maxIter','var')
-                maxIter = Inf;
-            end
+        function [prg] = ReduceDual(self,method)
 
             method = lower(method); 
             if (strcmp(method,'sdd'))
-                procDiag = facialRed.SDDDualIter;
+                procDiag = @facialRed.SDDDualIter;
             end
 
             if (strcmp(method,'d'))
@@ -260,15 +256,9 @@ classdef frlibPrg
                 A = A(:,self.K.f+1:end);
             end
            
-            cnt = 0; 
             while (1)
                 [success,A,c,K,Deq,feq] = feval(procDiag,A,c,K,Deq,feq);
 				[Deq,feq] = cleanLinear(Deq,feq);
-                cnt = cnt + 1; 
-            
-                if cnt > maxIter
-                    break;
-                end
             
                 if success == 0
                     break;
@@ -277,8 +267,7 @@ classdef frlibPrg
 
             %convert linear constraints into free variables
             A = [Deq',A];
-            c = c(:);
-            c = [feq;c]; 
+            c = [feq;c(:)]; 
             K.f = K.f + length(feq);
             prg = reducedPrg(A,b,c,K);
 
