@@ -7,7 +7,8 @@ To reduce an SDP expressed in terms of SeDuMi formatted inputs A,b,c,K, first ca
 
 prg = frlibPrg(A,b,c,K);
 
-To reduce the dual using diagonally dominant ('dd') or diagonal ('d') inner approximations of the PSD cone, issue the call:
+To reduce the dual using diagonally dominant ('dd') or diagonal ('d') inner approximations of the PSD cone, issue a call
+of the form:
 
 prgR = prg.ReduceDual('dd');
 
@@ -21,7 +22,7 @@ To reduce the primal, call
 
 prgR = prg.ReducePrimal('dd');
 
-To recover solutions x0 to the unreduced primal problem call
+To recover a solution x0 to the unreduced primal problem call
 
 [xFr]=prgR.Solve();
 x0 = prgR.RecoverPrimal(xFr);
