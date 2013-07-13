@@ -62,7 +62,6 @@ classdef facialRed
             Aeq = [Aeq,sparse(numEq,numGens)];
             beq = sparse(size(Aeq,1),1);
 
-
             if size(Aeq,1) > size(Aeq,2)
                 [Aeq,beq] = cleanLinear(Aeq,beq);
             else
@@ -71,9 +70,7 @@ classdef facialRed
                 Aeq = Aeq(rKeep,:);
                 beq = beq(rKeep,1);
             end
-           
-            
-            
+                  
             Aineq = [-speye(numGens),sparse(numGens,numLam),speye(numGens)];
             bineq = zeros(size(Aineq,1),1);
             c = [zeros(numGens+numLam,1);-ones(numGens,1)];
@@ -84,7 +81,13 @@ classdef facialRed
   
         function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildPrimLP(Z,W)
 
+
+            
             numGens = size(W,1);
+            if numGens == 0
+                error('No generators specified. size(W,1) = 0')
+            end
+            
             numMu = size(Z.A,1);   
             
             A = Z.lowerTri(Z.A);
@@ -96,13 +99,12 @@ classdef facialRed
             Aeq = [Aeq1;Aeq2];
             Aeq = [Aeq,sparse(size(Aeq,1),numGens)];
             beq = sparse(size(Aeq,1),1);
-                 
             
             %Remove dependent equations.
             if size(Aeq,1) > size(Aeq,2)
                 [Aeq,beq] = cleanLinear(Aeq,beq);
             else
-                [r,c] = find(Aeq);
+                [r,~] = find(Aeq);
                 rKeep = unique(r);
                 Aeq = Aeq(rKeep,:);
                 beq = beq(rKeep,1);
@@ -119,8 +121,18 @@ classdef facialRed
         function [success,A,c,K,T] = PolyhedralPrimIter(Z,W)
     
             numGens = size(W,1); 
+            K = Z.K;
+            A = Z.A;
+            b = Z.b;
+            c = Z.c;
+            T =[];
+            success = 0;
             
-            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
+            if (numGens == 0)
+                return;
+            end
+            
+           [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
             
             W = W';
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
@@ -203,70 +215,83 @@ classdef facialRed
               
         function [A,c,K,Deq,feq] = ReduceDual(Z,SblkDiag)
                 
-                A = Z.A(:,1:Z.GetIndx('s',1)-1); 
-                c = Z.c(1:Z.GetIndx('s',1)-1); 
-                K = Z.K;
-                Deq = []; feq = [];
-                
-                for i = 1:length(K.s) 
-                    
-                    offset = Z.GetIndx('s',1)-1;
-                    [s,e] = Z.GetIndx('s',i);
-                    S = mat(SblkDiag(s-offset:e-offset));
-               
-                    %if ( any( eigs(S) <= -10^-12))
-                    %    error('S must be PSD');
-                    %end
+            A = Z.flqrCols(Z.A);
+            c = Z.flqrCols(Z.c(:)'); 
+            
+            K = Z.K;
+            Deq = []; feq = [];
 
-                    %if  any(any(abs(S-S') > 10^-12))
-                    %    error('S must be symmetric');
-                    %end
+            As = []; cs = [];
+            for i = 1:length(K.s) 
 
-                    V = S;
-                    U = nullqr(V);
-             
-                    if (K.s(i) > 0)
-                        K.s(i) = size(U,2);
-                        A = [A,Z.ConjA(U,i)];
-                        c = [c,Z.ConjC(U,i)];
-                        for j=1:size(V,2)
-                            Deq = [Deq;Z.AtimesV(V(:,j),i)];
-                            feq = [feq;Z.CtimesV(V(:,j),i)];
-                        end
+                offset = Z.GetIndx('s',1)-1;
+                [s,e] = Z.GetIndx('s',i);
+                S = mat(SblkDiag(s-offset:e-offset));
+
+                %if ( any( eigs(S) <= -10^-12))
+                %    error('S must be PSD');
+                %end
+
+                %if  any(any(abs(S-S') > 10^-12))
+                %    error('S must be symmetric');
+                %end
+
+                V = S;
+                U = nullqr(V);
+
+                if (K.s(i) > 0)
+                    K.s(i) = size(U,2);
+                    As = [As,Z.ConjA(U,i)];
+                    cs = [cs,Z.ConjC(U,i)];
+                    for j=1:size(V,2)
+                        Deq = [Deq;Z.AtimesV(V(:,j),i)];
+                        feq = [feq;Z.CtimesV(V(:,j),i)];
                     end
                 end
+                
+            end
+            
+            A = [A, As];
+            c = [c, cs];
+                
         end
 
 
         function [A,c,K,T] = ReducePrimal(Z,SblkDiag)
+                       
+            A = Z.flqrCols(Z.A);
+            c = Z.flqrCols(Z.c(:)');  
+            
+            K = Z.K;
+            T = [];
 
-                
-                A = Z.A(:,1:Z.GetIndx('s',1)-1); 
-                c = Z.c(1:Z.GetIndx('s',1)-1); 
-                K = Z.K;
-                T = [];
+            As = [];
+            cs = [];
  
-                for i = 1:length(K.s) 
-                 
-                    [s,e] = Z.GetIndx('s',i);
-                    S = mat( SblkDiag(s:e));
-                  
-                   % if ( any( eigs(S) <= -10^-12))
-                   %     error('S must be PSD');
-                   % end
+            for i = 1:length(K.s) 
 
-                   % if any(any(abs(S-S')) > 10^-12)
-                   %     error('S must be symmetric');
-                   % end
-                    
-                    U = nullqr(S);
-                    if (K.s(i) > 0)
-                        K.s(i) = size(U,2);
-                        A = [A,Z.ConjA(U,i)];
-                        c = [c(:)',Z.ConjC(U,i)];
-                    end
-                    T{i} = U;
+                [s,e] = Z.GetIndx('s',i);
+                S = mat(SblkDiag(s:e));
+                
+               % if ( any( eigs(S) <= -10^-12))
+               %     error('S must be PSD');
+               % end
+
+               % if any(any(abs(S-S')) > 10^-12)
+               %     error('S must be symmetric');
+               % end
+
+                U = nullqr(S);
+                if (K.s(i) > 0)
+                    K.s(i) = size(U,2);
+                    As = [As,Z.ConjA(U,i)];
+                    cs = [cs(:)',Z.ConjC(U,i)];
                 end
+                T{i} = U;
+            end
+
+            A = [A, As];
+            c = [c, cs];
                 
         end
  

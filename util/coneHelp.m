@@ -137,7 +137,7 @@ classdef coneHelp
         
         
     function A =  lowerTri(self,A)
-        %return
+        
         startIndx = self.GetIndx('s',1);
         
         if isempty(startIndx)
@@ -157,11 +157,9 @@ classdef coneHelp
         A = A(:,[1:min(indx)-1,indx]);
 
     end
-    
-    
+       
     function A =  upperTri(self,A)
         
-        %return
         [startIndx,endIndx] = self.GetIndx('s',1);
         if isempty(startIndx)
             return;
@@ -181,9 +179,13 @@ classdef coneHelp
         A = A(:,[1:min(indx)-1,indx]);
 
     end
+           
+    function A = flqrCols(self,A)
+       cols = 1:max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
+       A = A(:,cols);
+    end
     
     
-        
     function mats = matsFromSubMat(self,U)
         mats =[];
         for i=1:length(self.K.s)
@@ -193,25 +195,18 @@ classdef coneHelp
 
     function extR = extRaysDD(self)
 
-        [v1] = self.matsFromSubMat(1);
-        [v2] = self.matsFromSubMat([1,-1;-1,1]);
-        [v3] = self.matsFromSubMat([1,1;1,1]);
+        %v1 = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+        v1 = self.matsFromSubMat([1]);
+        v2 = self.matsFromSubMat([1,-1;-1,1]);
+        v3 = self.matsFromSubMat([1,1;1,1]);
        
         extR = [v1;v2;v3]; 
-        num = 0;
-
-        %for n = self.K.s
-        %    num = num+nchoosek(n,2)*2+n;
-        %end
-        
-        %if (num~=size(extR,1))
-        %    error('incorrect number of extreme rays')
-        %end
-
+ 
     end
 
     function extR = extRaysD(self)
-        extR = self.matsFromSubMat(1);
+        %extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+        extR = self.matsFromSubMat([1]);
     end
     
     function A = symmetrizeA(self,cone,num)
@@ -229,12 +224,13 @@ classdef coneHelp
     function [startPos,endPos]= GetIndx(self,cone,num)
         
         startPos = getfield(self.Kstart,cone);
+        endPos = [];
+        
         if (startPos)
             startPos = startPos(num);
             endPos = getfield(self.Kend,cone);
             endPos = endPos(num);
         end
-    
         
     end 
 
@@ -248,7 +244,6 @@ classdef coneHelp
         
     end
 
-
     function UCU = ConjC(self,U,num)  
 
         [startPos,endPos]=self.GetIndx('s',num);
@@ -260,14 +255,19 @@ classdef coneHelp
 
     function A = matsFromSubMat_i(self,V,num)
      
+        if isempty(self.K.s)
+           A = [];
+           return
+        end
+        
         n = self.K.s(num);
         k = size(V,1);
-        offset = self.Kstart.s(num)-1;
 
         if n < k 
             A = []; return
         end
 
+        
         posArray = nchoosek(1:n,k); 
         numSubMat = size(posArray,1);
         
@@ -277,6 +277,8 @@ classdef coneHelp
         cols = zeros(nnzA,1);
         rows = zeros(nnzA,1);
         val = zeros(nnzA,1);
+        offset = self.Kstart.s(num)-1;
+        
         for j=1:numSubMat
             
             %get row/col defining the submat
