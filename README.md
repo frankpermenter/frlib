@@ -5,26 +5,29 @@ currently supported include non-negative diagonal matrices and PSD diagonally do
 
 To reduce an SDP expressed in terms of SeDuMi formatted inputs A,b,c,K, first call:
 
+```Matlab
 prg = frlibPrg(A,b,c,K);
+```
 
 To reduce the dual using diagonally dominant ('dd') or diagonal ('d') inner approximations, issue a call
 of the form:
 
+```Matlab
 prgR = prg.ReduceDual('dd');
-
+```
 To solve the reduced SDP, call:
-
+```Matlab
 [~,y] = prgR.Solve();
-
+```
 The solution y solves the dual of the unreduced SDP.  
 
 To reduce the primal, call
-
+```Matlab
 prgR = prg.ReducePrimal('dd');
-
+```
 To recover a solution x0 to the unreduced primal problem call
-
+```Matlab
 [xFr]=prgR.Solve();
 x0 = prgR.RecoverPrimal(xFr);
-
+```
 
