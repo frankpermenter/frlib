@@ -27,7 +27,7 @@ prgR = prg.ReducePrimal('dd');
 ```
 To recover a solution x0 to the unreduced primal problem call
 ```Matlab
-[xFr]=prgR.Solve();
+[xFr] = prgR.Solve();
 x0 = prgR.RecoverPrimal(xFr);
 ```
 
