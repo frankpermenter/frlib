@@ -209,17 +209,6 @@ classdef coneHelp
         extR = self.matsFromSubMat([1]);
     end
     
-    function A = symmetrizeA(self,cone,num)
-        A = self.A;
-        for i=1:length(self.K.s)
-            [startPos,endPos] = self.GetIndx('s',i); 
-            for j=1:size(A,1)
-                Atemp = mat(self.A(j,startPos:endPos)*1/2);
-                Atemp = Atemp+Atemp'; 
-                A(j,startPos:endPos) = Atemp(:)';
-            end
-        end
-    end
 
     function [startPos,endPos]= GetIndx(self,cone,num)
         

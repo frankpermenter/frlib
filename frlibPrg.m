@@ -15,7 +15,6 @@ classdef frlibPrg
     
         function self = frlibPrg(A,b,c,K)
  
-            self.A = A;
 
             if isempty(c)
                 c = sparse(size(A,2),1);
@@ -24,20 +23,22 @@ classdef frlibPrg
             if isempty(b)
                 b = sparse(size(A,1),1);
             end
-
-            self.b = b(:);
-            self.c = c(:);
-      
+    
+            c = c(:)';
             self.Z = coneHelp(A,b,c,K); 
             
-            notSymmetric = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A)))) > 10^-12;
+            notSymmetricA = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A)))) > 10^-12;
+            notSymmetricC = max(max(abs(self.Z.upperTri(c)-self.Z.lowerTri(c)))) > 10^-12;
             
-            if (notSymmetric) 
-                error('columns of A must give symmetric matrices for psd variables');
+            if (notSymmetricA || notSymmetricC) 
+                error('Columns of A and c must give symmetric matrices for psd variables. You can symmetrize by running [A,c]=makeSymmetric(A,c,K)');
             end
             
             self.K = self.Z.K;
-
+            self.A = self.Z.A;
+            self.b = self.Z.b(:);
+            self.c = self.Z.c(:);
+      
         end
 
         function [x,y] = Solve(self)
