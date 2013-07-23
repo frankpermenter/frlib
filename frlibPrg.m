@@ -41,10 +41,10 @@ classdef frlibPrg
       
         end
 
-        function [x,y] = Solve(self)
+        function [x,y,info] = Solve(self)
             
             [A,b,T] = cleanLinear(self.A,self.b); 
-            [x,y] = sedumi(A,b,self.c,self.K);                
+            [x,y,info] = sedumi(A,b,self.c,self.K);                
             y = T*y;
             
         end
