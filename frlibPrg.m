@@ -15,7 +15,11 @@ classdef frlibPrg
     
         function self = frlibPrg(A,b,c,K)
  
-
+            if ~isstruct(K)
+               error('Invalid input. 4th argument must be a struct')
+            end
+            
+            
             if isempty(c)
                 c = sparse(size(A,2),1);
             end
@@ -31,7 +35,7 @@ classdef frlibPrg
             notSymmetricC = max(max(abs(self.Z.upperTri(c)-self.Z.lowerTri(c)))) > 10^-12;
             
             if (notSymmetricA || notSymmetricC) 
-                error('Columns of A and c must give symmetric matrices for psd variables. You can symmetrize by running [A,c]=makeSymmetric(A,c,K)');
+                error('Rows of A and c must give symmetric matrices for psd variables. You can symmetrize by running [A,c]=makeSymmetric(A,c,K)');
             end
             
             self.K = self.Z.K;
@@ -180,15 +184,15 @@ classdef frlibPrg
             method = lower(method);       
 
             if (strcmp(method,'sdd'))
-                procDiag = @facialRed.SDDPrimIter;
+                procReduce = @facialRed.SDDPrimIter;
             end
 
             if (strcmp(method,'d'))
-                procDiag = @facialRed.DiagPrimIter;
+                procReduce = @facialRed.DiagPrimIter;
             end
 
             if (strcmp(method,'dd'))
-                procDiag = @facialRed.DiagDomPrimIter;
+                procReduce = @facialRed.DiagDomPrimIter;
             end
 
             A = self.A; b = self.b; c = self.c; K = self.K;
@@ -197,7 +201,7 @@ classdef frlibPrg
             
             while (1)
 
-                [success,A,c,K,Tform] = feval(procDiag,A,b,c,K);
+                [success,A,c,K,Tform] = feval(procReduce,A,b,c,K);
                 [A,b] = cleanLinear(A,b);
 
                 if success == 0
@@ -233,15 +237,15 @@ classdef frlibPrg
 
             method = lower(method); 
             if (strcmp(method,'sdd'))
-                procDiag = @facialRed.SDDDualIter;
+                procReduce = @facialRed.SDDDualIter;
             end
 
             if (strcmp(method,'d'))
-                procDiag = @facialRed.DiagDualIter;
+                procReduce = @facialRed.DiagDualIter;
             end
 
             if strcmp(method,'dd')
-                procDiag = @facialRed.DiagDomDualIter;
+                procReduce = @facialRed.DiagDomDualIter;
             end
 
             A = self.A; b = self.b; c = self.c; K = self.K;
@@ -258,7 +262,7 @@ classdef frlibPrg
             end
            
             while (1)
-                [success,A,c,K,Deq,feq] = feval(procDiag,A,c,K,Deq,feq);
+                [success,A,c,K,Deq,feq] = feval(procReduce,A,c,K,Deq,feq);
 				[Deq,feq] = cleanLinear(Deq,feq);
             
                 if success == 0
