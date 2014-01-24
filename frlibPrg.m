@@ -202,7 +202,7 @@ classdef frlibPrg
             while (1)
 
                 [success,A,c,K,Tform] = feval(procReduce,A,b,c,K);
-                [A,b] = cleanLinear(A,b);
+%                [A,b] = cleanLinear(A,b);
 
                 if success == 0
                    break;

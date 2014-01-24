@@ -1,7 +1,7 @@
-%function pass = runHorn
+function pass = runHorn
 
     pass = [];
-    for i=2
+    for i=2:5
         
         load(['horn',num2str(i),'.mat']);
         p = frlibPrg(A,b,[],K);

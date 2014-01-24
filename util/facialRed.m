@@ -80,8 +80,11 @@ classdef facialRed
         end
   
         function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildPrimLP(Z,W)
-
-
+          
+            %equation: \sum_i A_i mu_i = \sum_i s_i W_i
+            % s_i \ge t_i \ge 0
+            %cols: (mu,y,t)
+            
             
             numGens = size(W,1);
             if numGens == 0
@@ -102,7 +105,7 @@ classdef facialRed
             
             %Remove dependent equations.
             if size(Aeq,1) > size(Aeq,2)
-                [Aeq,beq] = cleanLinear(Aeq,beq);
+                %[Aeq,beq] = cleanLinear(Aeq,beq);
             else
                 [r,~] = find(Aeq);
                 rKeep = unique(r);

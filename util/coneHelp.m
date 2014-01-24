@@ -134,24 +134,27 @@ classdef coneHelp
         end
 
         if self.NumVar ~= length(c)
-            error(['Number of variables do not match dimension of c. Num vars: ',num2str(self.NumVar),', Dim c: ', num2str(length(c))]);
+            error(['Number of variables do not match length of c. Num vars: ',num2str(self.NumVar),', Length c: ', num2str(length(c))]);
         end
         
-        
+        if length(self.b) ~= size(A,1)
+            error(['Number of rows of A do not match length of b. Num rows: ',num2str(size(A,1)),', Length b: ', num2str(length(b))]);
+        end
+ 
     end
         
-    
     function y = anyConicVars(self)
        y = length(self.indxNNeg) > 0; 
     end
-    
-        
-    function A =  lowerTri(self,A)
-        
+       
+           
+    function indx =  lowerTriIndx(self)
+
         startIndx = self.GetIndx('s',1);
         
         if isempty(startIndx)
-            return;
+            indx = 1:size(self.A,2);
+            return
         end
         
         indx = [1:startIndx-1];
@@ -164,15 +167,15 @@ classdef coneHelp
             end
         end
 
-        A = A(:,[1:min(indx)-1,indx]);
-
     end
        
-    function A =  upperTri(self,A)
+    function indx  =  upperTriIndx(self)
         
-        [startIndx,endIndx] = self.GetIndx('s',1);
+        
+        [startIndx] = self.GetIndx('s',1);
         if isempty(startIndx)
-            return;
+            indx = 1:size(self.A,2);
+            return
         end
         
         indx = [1:startIndx-1];
@@ -186,7 +189,36 @@ classdef coneHelp
             end
         end
 
-        A = A(:,[1:min(indx)-1,indx]);
+    end
+    
+    function A =  symmetrize(self,A)
+        
+        indxL = self.lowerTriIndx();
+        indxU = self.upperTriIndx();
+        
+        As = (A(:,indxL) + A(:,indxU) )/2;
+        
+        A(:,indxL) = As;
+        A(:,indxU) = As;
+     
+
+    end
+    
+    
+    
+    function A =  lowerTri(self,A)
+        
+        indx = self.lowerTriIndx();
+
+        A = A(:,indx);
+
+    end
+       
+    function A =  upperTri(self,A)
+        
+        indx = self.lowerTriIndx();
+
+        A = A(:,indx);
 
     end
            
@@ -206,7 +238,6 @@ classdef coneHelp
     function extR = extRaysDD(self)
 
         v1 = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
-        
         v2 = sparse(0,self.NumVar);
         for i=1:length(self.K.q)
             N = self.K.q;
@@ -219,7 +250,8 @@ classdef coneHelp
         end
         
         
-        %v1 = self.matsFromSubMat([1]);
+        v1 = self.matsFromSubMat([1]);
+        v2 = [];
         v3 = self.matsFromSubMat([1,-1;-1,1]);
         v4 = self.matsFromSubMat([1,1;1,1]);
        
@@ -228,8 +260,10 @@ classdef coneHelp
     end
 
     function extR = extRaysD(self)
-        extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
-       % extR = self.matsFromSubMat([1]);
+       % extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+        indxDiag = cell2mat(self.indxDiag);
+        extR = sparse(1:length(indxDiag),indxDiag,1,length(indxDiag),self.NumVar);
+        %extR = self.matsFromSubMat([1]);
     end
     
 
