@@ -133,8 +133,18 @@ classdef coneHelp
             error(['Cone sizes do not match columns of A. Num vars: ',num2str(self.NumVar),' Num Col: ', num2str(size(self.A,2))]);
         end
 
+        if self.NumVar ~= length(c)
+            error(['Number of variables do not match dimension of c. Num vars: ',num2str(self.NumVar),', Dim c: ', num2str(length(c))]);
+        end
+        
+        
     end
         
+    
+    function y = anyConicVars(self)
+       y = length(self.indxNNeg) > 0; 
+    end
+    
         
     function A =  lowerTri(self,A)
         
@@ -195,18 +205,31 @@ classdef coneHelp
 
     function extR = extRaysDD(self)
 
-        %v1 = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
-        v1 = self.matsFromSubMat([1]);
-        v2 = self.matsFromSubMat([1,-1;-1,1]);
-        v3 = self.matsFromSubMat([1,1;1,1]);
+        v1 = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+        
+        v2 = sparse(0,self.NumVar);
+        for i=1:length(self.K.q)
+            N = self.K.q;
+            if (N > 0)
+                vq1 = [ones(N-1,1),speye(N-1)];
+                vq2 = [ones(N-1,1),-speye(N-1)];
+                [s,e] = self.GetIndx('q',i);
+                v2(end+1:end+2*N-2,s:e) = [vq1;vq2];
+            end
+        end
+        
+        
+        %v1 = self.matsFromSubMat([1]);
+        v3 = self.matsFromSubMat([1,-1;-1,1]);
+        v4 = self.matsFromSubMat([1,1;1,1]);
        
-        extR = [v1;v2;v3]; 
+        extR = [v1;v2;v3;v4]; 
  
     end
 
     function extR = extRaysD(self)
-        %extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
-        extR = self.matsFromSubMat([1]);
+        extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+       % extR = self.matsFromSubMat([1]);
     end
     
 

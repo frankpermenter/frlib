@@ -1,7 +1,7 @@
-function pass = runHorn
+%function pass = runHorn
 
     pass = [];
-    for i=2:5
+    for i=2
         
         load(['horn',num2str(i),'.mat']);
         p = frlibPrg(A,b,[],K);
@@ -10,9 +10,14 @@ function pass = runHorn
         load(['hornD',num2str(i),'.mat']);
         d = frlibPrg(A,[],c,K);
         dred = d.ReduceDual('dd');
-        pass(end+1) = all(dred.K.s == pred.K.s);
+        [~,y] = dred.Solve();
+        
+        pass(end+1) = all(dred.K.s == pred.K.s) & d.CheckDual(y);
         
     end
+    
+    
+    
     
     
     

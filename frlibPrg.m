@@ -103,7 +103,7 @@ classdef frlibPrg
 
         function success = CheckDual(self,y)
            
-            eps = 10^-12;
+            eps = 10^-9;
             [l,q,r,s]=self.GetDualSlack(y);
             pass = [];
             for i=1:length(q) 
@@ -261,10 +261,11 @@ classdef frlibPrg
                 A = A(:,self.K.f+1:end);
             end
            
+            Scellarray= [];
             while (1)
-                [success,A,c,K,Deq,feq] = feval(procReduce,A,c,K,Deq,feq);
+                [success,A,c,K,Deq,feq,S] = feval(procReduce,A,c,K,Deq,feq);
 				[Deq,feq] = cleanLinear(Deq,feq);
-            
+                Scellarray{end+1} = S;
                 if success == 0
                     break;
                 end
@@ -274,7 +275,7 @@ classdef frlibPrg
             A = [Deq',A];
             c = [feq;c(:)]; 
             K.f = K.f + length(feq);
-            prg = reducedPrg(A,b,c,K);
+            prg = reducedPrg(A,b,c,K,[],Scellarray);
 
         end
     end

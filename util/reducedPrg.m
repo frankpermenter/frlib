@@ -2,19 +2,26 @@ classdef reducedPrg < frlibPrg
 
     properties
         T
+        S
     end
 
     methods
     
-        function self = reducedPrg(A,b,c,K,T)
+        function self = reducedPrg(A,b,c,K,T,S)
            
             self@frlibPrg(A,b,c,K); 
 
             if ~exist('T','var')
                 T = [];
             end
+            
+            if ~exist('S','var')
+                S = [];
+            end
+            
 
             self.T = T;
+            self.S = S;
         end
 
         function xr = RecoverPrimal(self,x);

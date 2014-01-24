@@ -1,7 +1,7 @@
 classdef facialRed
  
     methods(Static)
-
+        
         function [x,numErr,infeas] = solveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
         
             gurobiExists = ~isempty(which('gurobi'));
@@ -171,9 +171,10 @@ classdef facialRed
 
         end
 
-        function [success,A,c,K,Deq,feq] = PolyhedralDualIter(Z,Deq,feq,W)
-
+        function [success,A,c,K,Deq,feq,S] = PolyhedralDualIter(Z,Deq,feq,W)
+         
             W = W';
+            S = [];
             numGens = size(W,2);
             
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(Z.A,Z.c,Deq,feq,W);
@@ -197,36 +198,98 @@ classdef facialRed
 
         end        
         
-        function [success,A,c,K,Deq,feq] = DiagDomDualIter(A,c,K,Deq,feq)
+        function [success,A,c,K,Deq,feq,S] = DiagDomDualIter(A,c,K,Deq,feq)
 
             Z = coneHelp(A,[],c,K);  
-            W = Z.extRaysDD(); 
-            [success,A,c,K,Deq,feq] = facialRed.PolyhedralDualIter(Z,Deq,feq,W);
+            S = [];
+            if (Z.anyConicVars() == 0) 
+                success = 0; 
+            else
+                W = Z.extRaysDD(); 
+                [success,A,c,K,Deq,feq,S] = facialRed.PolyhedralDualIter(Z,Deq,feq,W);
+            end
+            
             
         end
         
-        function [success,A,c,K,Deq,feq] = DiagDualIter(A,c,K,Deq,feq)
+        function [success,A,c,K,Deq,feq,S] = DiagDualIter(A,c,K,Deq,feq)
             
             Z = coneHelp(A,[],c,K); 
-            W = Z.extRaysD(); 
-            [success,A,c,K,Deq,feq] = facialRed.PolyhedralDualIter(Z,Deq,feq,W);
+            S = [];
+            if (Z.anyConicVars() == 0) 
+                success = 0; 
+            else
+                W = Z.extRaysD(); 
+                [success,A,c,K,Deq,feq,S] = facialRed.PolyhedralDualIter(Z,Deq,feq,W);
+            end
             
         end
               
         function [A,c,K,Deq,feq] = ReduceDual(Z,SblkDiag)
                 
-            A = Z.flqrCols(Z.A);
-            c = Z.flqrCols(Z.c(:)'); 
-            
-            K = Z.K;
             Deq = []; feq = [];
-
+            K = Z.K;
+            
+            [s,e] = Z.GetIndx('f',1);
+            A = Z.A(:,s:e);
+            c = Z.c(s:e)';
+            
+            [s,e] = Z.GetIndx('l',1);
+            S = SblkDiag(s:e);
+            if (any(S))
+                colsRemove = find(S)+s-1;
+                colsKeep = setdiff(s:e,colsRemove);
+                A = [A,Z.A(:,colsKeep)];
+                c = [c,Z.c(colsKeep)'];
+                Deq = Z.A(:,colsRemove)';
+                feq = Z.c(colsRemove);
+                K.l = K.l-length(colsRemove);
+            else
+                A = [A,Z.A(:,s:e)];
+                c = [c,Z.c(s:e)'];
+            end
+            
+            newLinearA=[];
+            newLinearC=[];
+            
+            for i=1:length(Z.K.q)
+                [s,e] = Z.GetIndx('q',i);
+                S = SblkDiag(s:e);
+                if (any(S))        
+                    [DeqTemp,feqTemp,ineqA,ineqC] = facialRed.ReduceLorentzDual(S,Z.A(:,s:e),Z.c(s:e));   
+                    Deq = [Deq;DeqTemp];
+                    feq = [feq;feqTemp];
+                    newLinearA = [newLinearA,ineqA];
+                    newLinearC = [newLinearC,ineqC];
+                    K.q(i) = 0;
+                else
+                    A = [A,Z.A(:,s:e)];
+                    c = [c,Z.c(s:e)'];
+                end
+            end
+             
+            for i=1:length(Z.K.r)
+                [s,e] = Z.GetIndx('r',i);
+                S = SblkDiag(s:e);
+                if (any(S) )        
+                    [DeqTemp,feqTemp,ineqA,ineqC] = facialRed.ReduceLorentzDual(S,Atemp,c);   
+                    Deq = [Deq;DeqTemp];
+                    feq = [feq;feqTemp];
+                    newLinearA = [newLinearA,ineqA];
+                    newLinearC = [newLinearC,ineqC];
+                    K.r(i) = 0;
+                else
+                    A = [A,Z.A(:,s:e)];
+                    c = [c,Z.c(s:e)'];
+                end
+            end
+            
             As = []; cs = [];
             for i = 1:length(K.s) 
 
-                offset = Z.GetIndx('s',1)-1;
+                
                 [s,e] = Z.GetIndx('s',i);
-                S = mat(SblkDiag(s-offset:e-offset));
+                S = mat(SblkDiag(s:e));
 
                 %if ( any( eigs(S) <= -10^-12))
                 %    error('S must be PSD');
@@ -248,6 +311,16 @@ classdef facialRed
                         feq = [feq;Z.CtimesV(V(:,j),i)];
                     end
                 end
+                
+            end
+            
+            
+            if (size(newLinearA,2) > 0)
+                
+                insertPoint = K.l+K.f+1;
+                A = [A(:,1:insertPoint-1),newLinearA,A(:,insertPoint:end)]
+                c = [c(1:insertPoint-1),newLinearC,c(insertPoint:end)]
+                K.l = K.l + size(newLinearA,2);
                 
             end
             
@@ -333,6 +406,42 @@ classdef facialRed
             end 
         end
 
+        
+        function [Deq,feq,A,c] = ReduceLorentzDual(S,A,c)
+
+            S = S(:);
+            c = c(:);
+            S = S/S(1);
+
+            if norm(S(2:end)) < 1
+                %c-A'y = 0
+                Deq = A';
+                feq = c;
+                A = []; c = [];
+            else
+
+                sPerp = [1;-S(2:end)]
+                N = length(c);
+
+                norm_sPerpSqr = sum(sPerp.*sPerp);
+
+                % (c-A'y) must be parallel to sPerp
+                % (c-A'y) - P(c-A'y) = 0
+                % 
+                Deq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*A';
+                feq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*c;
+
+                %c(1) \ge A(:,1)'*y 
+                A = A(:,1);
+                c = c(1);
+        
+            end
+        end
+    
+
+        
+        
+        
 
         function [success,A,c,K,Deq,feq] = SDDDualIter(A,c,K,Deq,feq)
 
