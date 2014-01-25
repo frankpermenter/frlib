@@ -1,6 +1,6 @@
 classdef coneHelp
 
-    properties 
+    properties
         K
         A
         b
@@ -11,7 +11,7 @@ classdef coneHelp
         indxNNeg
         NumVar
     end
-    
+
     methods(Static)
 
         function K = cleanK(K)
@@ -31,12 +31,12 @@ classdef coneHelp
             if ~isfield(K,'s') || isempty(K.s)
                 K.s = 0;
             end
-            
+
             if ~isfield(K,'r') || isempty(K.r)
                 K.r = 0;
             end
 
-            K.s = K.s(:)';    
+            K.s = K.s(:)';
             K.r = K.r(:)';
             K.q = K.q(:)';
 
@@ -53,13 +53,13 @@ classdef coneHelp
 
             Kstart.s = [];
             Kstart.f  = [];
-            Kstart.l = [];    
+            Kstart.l = [];
             Kstart.r = [];
             Kstart.q  = [];
 
             Kend.s = [];
             Kend.f  = [];
-            Kend.l = [];    
+            Kend.l = [];
             Kend.r = [];
             Kend.q  = [];
 
@@ -74,7 +74,7 @@ classdef coneHelp
             end
 
             if (any(K.q))
-                offset = K.f + K.l; 
+                offset = K.f + K.l;
                 temp = [0,cumsum(K.q)]+1 + offset;
                 Kstart.q = temp(1:end-1);
                 Kend.q = Kstart.q + K.q - 1;
@@ -89,33 +89,33 @@ classdef coneHelp
 
             indxDiag=[];
             if (any(K.s))
-                offset = K.f + K.l + sum(K.q) + sum(K.r); 
+                offset = K.f + K.l + sum(K.q) + sum(K.r);
                 temp = [0,cumsum(K.s.^2)]+1;
                 Kstart.s = temp(1:end-1) + offset;
                 Kend.s = Kstart.s + K.s.^2 - 1;
-               
+
 
                 for i=1:length(Kstart.s)
                     indxDiag{i} = [Kstart.s(i):K.s(i)+1:Kend.s(i)];
                 end
             end
-        
+
             self.Kstart = Kstart;
-            self.Kend = Kend; 
+            self.Kend = Kend;
             self.indxDiag = indxDiag;
             self.indxNNeg = [Kstart.l:Kend.l,Kstart.q,Kstart.r,Kstart.r+1,cell2mat(indxDiag)];
 
             end
 
     end
-    
+
     methods
 
-    function self = coneHelp(A,b,c,K) 
-        
+    function self = coneHelp(A,b,c,K)
+
         self.K = self.cleanK(K);
         self.A = A;
-        
+
         if  isempty(b)
             self.b = zeros(size(A,1),1);
         else
@@ -127,8 +127,8 @@ classdef coneHelp
         else
             self.c = c(:);
         end
-        
-        self = self.CalcIndices(self.K); 
+
+        self = self.CalcIndices(self.K);
         if self.NumVar ~= size(self.A,2)
             error(['Cone sizes do not match columns of A. Num vars: ',num2str(self.NumVar),' Num Col: ', num2str(size(self.A,2))]);
         end
@@ -136,29 +136,31 @@ classdef coneHelp
         if self.NumVar ~= length(c)
             error(['Number of variables do not match length of c. Num vars: ',num2str(self.NumVar),', Length c: ', num2str(length(c))]);
         end
-        
+
         if length(self.b) ~= size(A,1)
             error(['Number of rows of A do not match length of b. Num rows: ',num2str(size(A,1)),', Length b: ', num2str(length(b))]);
         end
- 
+
+
+
     end
-        
+
     function y = anyConicVars(self)
-       y = length(self.indxNNeg) > 0; 
+       y = length(self.indxNNeg) > 0;
     end
-       
-           
+
+
     function indx =  lowerTriIndx(self)
 
         startIndx = self.GetIndx('s',1);
-        
+
         if isempty(startIndx)
             indx = 1:size(self.A,2);
             return
         end
-        
+
         indx = [1:startIndx-1];
-        
+
         for i=1:length(self.K.s)
             indxDiag = self.indxDiag{i};
             for j=1:self.K.s(i)
@@ -168,18 +170,17 @@ classdef coneHelp
         end
 
     end
-       
+
     function indx  =  upperTriIndx(self)
-        
-        
+
         [startIndx] = self.GetIndx('s',1);
         if isempty(startIndx)
             indx = 1:size(self.A,2);
             return
         end
-        
+
         indx = [1:startIndx-1];
-        
+
         for i=1:length(self.K.s)
             [~,endIndx] = self.GetIndx('s',i);
             indxDiag = self.indxDiag{i};
@@ -190,44 +191,39 @@ classdef coneHelp
         end
 
     end
-    
+
     function A =  symmetrize(self,A)
-        
+
         indxL = self.lowerTriIndx();
         indxU = self.upperTriIndx();
-        
+
         As = (A(:,indxL) + A(:,indxU) )/2;
-        
+
         A(:,indxL) = As;
         A(:,indxU) = As;
-     
 
     end
-    
-    
-    
+
     function A =  lowerTri(self,A)
-        
-        indx = self.lowerTriIndx();
 
+        indx = self.lowerTriIndx();
         A = A(:,indx);
 
     end
-       
+
     function A =  upperTri(self,A)
-        
-        indx = self.lowerTriIndx();
 
+        indx = self.upperTriIndx();
         A = A(:,indx);
 
     end
-           
+
     function A = flqrCols(self,A)
        cols = 1:max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
        A = A(:,cols);
     end
-    
-    
+
+
     function mats = matsFromSubMat(self,U)
         mats =[];
         for i=1:length(self.K.s)
@@ -248,49 +244,49 @@ classdef coneHelp
                 v2(end+1:end+2*N-2,s:e) = [vq1;vq2];
             end
         end
-        
-        
+
+
         v1 = self.matsFromSubMat([1]);
         v2 = [];
         v3 = self.matsFromSubMat([1,-1;-1,1]);
         v4 = self.matsFromSubMat([1,1;1,1]);
-       
-        extR = [v1;v2;v3;v4]; 
- 
+
+        extR = [v1;v2;v3;v4];
+
     end
 
     function extR = extRaysD(self)
-       % extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
+        %extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
         indxDiag = cell2mat(self.indxDiag);
         extR = sparse(1:length(indxDiag),indxDiag,1,length(indxDiag),self.NumVar);
         %extR = self.matsFromSubMat([1]);
     end
-    
+
 
     function [startPos,endPos]= GetIndx(self,cone,num)
-        
+
         startPos = getfield(self.Kstart,cone);
         endPos = [];
-        
+
         if (startPos)
             startPos = startPos(num);
             endPos = getfield(self.Kend,cone);
             endPos = endPos(num);
         end
-        
-    end 
 
-    function UAU = ConjA(self,U,num)  
+    end
+
+    function UAU = ConjA(self,U,num)
 
         [startPos,endPos]=self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
 
         T = UtoT(U');
         UAU = (T * A')';
-        
+
     end
 
-    function UCU = ConjC(self,U,num)  
+    function UCU = ConjC(self,U,num)
 
         [startPos,endPos]=self.GetIndx('s',num);
         c = self.c(startPos:endPos);
@@ -300,23 +296,23 @@ classdef coneHelp
     end
 
     function A = matsFromSubMat_i(self,V,num)
-     
+
         if isempty(self.K.s)
            A = [];
            return
         end
-        
+
         n = self.K.s(num);
         k = size(V,1);
 
-        if n < k 
+        if n < k
             A = []; return
         end
 
-        
-        posArray = nchoosek(1:n,k); 
+
+        posArray = nchoosek(1:n,k);
         numSubMat = size(posArray,1);
-        
+
         nnzA = numSubMat*nnz(V);
 
         cnt = 1;
@@ -324,24 +320,24 @@ classdef coneHelp
         rows = zeros(nnzA,1);
         val = zeros(nnzA,1);
         offset = self.Kstart.s(num)-1;
-        
+
         for j=1:numSubMat
-            
+
             %get row/col defining the submat
-            pos = posArray(j,:);   
-            
+            pos = posArray(j,:);
+
             %get first entry of submat
             indxStart = n*(pos(1)-1)+pos(1);
 
-            %how far apart are defining rows 
+            %how far apart are defining rows
             deltaRow = [0,cumsum(diff(pos))];
 
             %indices of the first column of sub mat
             firstCol = indxStart(1) + deltaRow;
-      
+
             rowPos = j*ones(length(k),1);
             %loop across columns
-            for p = 1:length(pos) 
+            for p = 1:length(pos)
                 cols(cnt:cnt+k-1) = firstCol + n*deltaRow(p)+offset;
                 rows(cnt:cnt+k-1) = rowPos;
                 val(cnt:cnt+k-1) = V(:,p);
@@ -359,9 +355,9 @@ classdef coneHelp
         [startPos,endPos]=self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
         for i=1:size(A,1)
-            Aeq(:,i) = mat(A(i,:))*V; 
+            Aeq(:,i) = mat(A(i,:))*V;
         end
-        
+
     end
 
     function [beq] = CtimesV(self,V,num)
@@ -371,36 +367,36 @@ classdef coneHelp
         beq = mat(C)*V;
 
     end
-        
-    function y = AdotX(self,X,num) 
+
+    function y = AdotX(self,X,num)
 
         [startPos,endPos]=self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
         m = size(A,1);
-        X = X(:);  
-        y = A*X; 
+        X = X(:);
+        y = A*X;
 
     end
 
-    function y = CdotX(self,X,num) 
+    function y = CdotX(self,X,num)
 
         [startPos,endPos]=self.GetIndx('s',num);
         C = self.c(startPos:endPos);
-        X = X(:);  
-        y = C(:)'*X; 
+        X = X(:);
+        y = C(:)'*X;
 
     end
 
     %Find variables in cone that vanish if others vanish
     function [indxZero,Knew] = FindMustVanish(self,indx)
-      
+
         indx = unique(indx);
         indx = indx(:);
         indxZero = indx';
         Knew = self.K;
 
         if isempty(indx)
-            return   
+            return
         end
 
         if self.Kstart.f
@@ -409,12 +405,12 @@ classdef coneHelp
         end
 
         if self.Kstart.l
-            indxL = indx(indx >= self.Kstart.l & indx <= self.Kend.l); 
+            indxL = indx(indx >= self.Kstart.l & indx <= self.Kend.l);
             Knew.l = Knew.l - length(indxL);
         end
 
         if self.Kstart.q
-        
+
             indxQ = indx(indx >= self.Kstart.q(1) & indx <= self.Kend.q(end));
             for i=indxQ
                 cnstN = max(find(K.start.q <= i));
@@ -422,45 +418,45 @@ classdef coneHelp
             end
 
             %zero out other variables if first
-            [~,cnstN] = intersect(self.Kstart.q,indxQ);       
+            [~,cnstN] = intersect(self.Kstart.q,indxQ);
             Knew.q(cnstN) = 0;
             for i = cnstN
                 indxZero = [indxZero,self.Kstart.q(i)+1:self.Kend.q(i)];
-            end 
-            
+            end
+
         end
 
         %Rotated lorentz constraints
-        %remove variable from constraint    
+        %remove variable from constraint
         if self.Kstart.r
 
-            indxR = indx(indx >= self.Kstart.r(1) & indx <= self.Kend.r(end)); 
+            indxR = indx(indx >= self.Kstart.r(1) & indx <= self.Kend.r(end));
             for i=indxR
                 cnstN = max(find(self.Kstart.r <= i));
                 Knew.r(cnstN) = Knew.r(cnstN) - 1;
             end
 
-            %zero out rotated constraints 
-            [~,cnstR1] = intersect(self.Kstart.r,indxR);      
-            [~,cnstR2] = intersect(self.Kstart.r+1,indxR);   
+            %zero out rotated constraints
+            [~,cnstR1] = intersect(self.Kstart.r,indxR);
+            [~,cnstR2] = intersect(self.Kstart.r+1,indxR);
             cnstR = union(cnstR1,cnstR2);
             cnstR12 = intersect(cnstR2,cnstR1);
             Knew.r(cnstR) = 1;
             Knew.r(cnstR12) = 0;
-            
+
             for i = cnstR
                 indxZero = [indxZero,self.Kstart.r(i)+2:self.Kend.r(i)];
-            end 
+            end
 
         end
 
         if self.Kstart.s
-            
-            indxS = indx(indx >= self.Kstart.s(1) & indx <= self.Kend.s(end));           
+
+            indxS = indx(indx >= self.Kstart.s(1) & indx <= self.Kend.s(end));
             indxD = intersect(cell2mat(self.indxDiag),indxS);
-           
+
             for indx=indxD
-                  
+
                cnstN = max(find(self.Kstart.s <= indx));
                offset = self.Kstart.s(cnstN)-1;
                N = self.K.s(cnstN);
@@ -473,11 +469,11 @@ classdef coneHelp
                indxRC = union(indxCol,indxRow)+offset;
                %indxRC = setdiff(indxRC,indx);
                %decrement dimension of LMI by 1
-               Knew.s(cnstN) =  Knew.s(cnstN) - 1; 
+               Knew.s(cnstN) =  Knew.s(cnstN) - 1;
                indxZero = [indxZero,indxRC];
-                
+
             end
-            
+
         end
 
 

@@ -12,14 +12,14 @@ classdef frlibPrg
     end
 
     methods
-    
+
         function self = frlibPrg(A,b,c,K)
- 
+
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
-            
-            
+
+
             if isempty(c)
                 c = sparse(size(A,2),1);
             end
@@ -27,30 +27,32 @@ classdef frlibPrg
             if isempty(b)
                 b = sparse(size(A,1),1);
             end
-    
+
             c = c(:)';
+            [A,c] = makeSymmetric(A,c,K);
+
             self.Z = coneHelp(A,b,c,K); 
-            
+
             notSymmetricA = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A)))) > 10^-12;
             notSymmetricC = max(max(abs(self.Z.upperTri(c)-self.Z.lowerTri(c)))) > 10^-12;
-            
+
             if (notSymmetricA || notSymmetricC) 
                 error('Rows of A and c must give symmetric matrices for psd variables. You can symmetrize by running [A,c]=makeSymmetric(A,c,K)');
             end
-            
+
             self.K = self.Z.K;
             self.A = self.Z.A;
             self.b = self.Z.b(:);
             self.c = self.Z.c(:);
-      
+
         end
 
         function [x,y,info] = Solve(self)
-            
+
             [A,b,T] = cleanLinear(self.A,self.b); 
-            [x,y,info] = sedumi(A,b,self.c,self.K);                
+            [x,y,info] = sedumi(A,b,self.c,self.K);
             y = T*y;
-            
+
         end
 
 
@@ -59,7 +61,7 @@ classdef frlibPrg
             A = cleanLinear(self.A,self.b);
             dimC = self.K.l + self.K.q + self.K.r;
             dimC = dimC + sum(self.K.s.^2/2+self.K.s/2);
-        
+
             dimP = self.K.f + dimC - size(A,1);
 
             A = cleanLinear(self.A,self.b*0); 
@@ -81,7 +83,7 @@ classdef frlibPrg
         end
 
         function success = CheckPrimal(self,x)
-        
+
             eps = 10^-8; 
             [l,q,r,s]=self.GetPrimalVars(x);
             pass = [];
@@ -102,7 +104,7 @@ classdef frlibPrg
 
 
         function success = CheckDual(self,y)
-           
+
             eps = 10^-9;
             [l,q,r,s]=self.GetDualSlack(y);
             pass = [];
@@ -114,7 +116,7 @@ classdef frlibPrg
                 pass(end+1) = self.CheckPSD( s{i},eps);
             end
             success = all(pass == 1);
-            
+
         end
 
         function [nneg,lor,rlor,psd] = GetDualSlack(self,y)
@@ -141,7 +143,7 @@ classdef frlibPrg
                 rlor{i} = c(indx)' - y'*A(:,indx);
                 offset = offset + K.r(i);
             end
-            
+
             for i=1:length(K.s)
                 indx = offset + [1:K.s(i).^2];
                 psd{i} = mat(c(indx)' - y'*A(:,indx));
@@ -180,8 +182,7 @@ classdef frlibPrg
 
 
         function [prg] = ReducePrimal(self,method)
-        
-            method = lower(method);       
+            method = lower(method);
 
             if (strcmp(method,'sdd'))
                 procReduce = @facialRed.SDDPrimIter;
@@ -198,7 +199,7 @@ classdef frlibPrg
             A = self.A; b = self.b; c = self.c; K = self.K;
             T = [];
             firstPass = 1; 
-            
+
             while (1)
 
                 [success,A,c,K,Tform] = feval(procReduce,A,b,c,K);
@@ -228,7 +229,7 @@ classdef frlibPrg
 
                 T = U; 
             end
-           
+
             prg = reducedPrg(A,b,c,K,T);
 
         end
@@ -250,8 +251,8 @@ classdef frlibPrg
 
             A = self.A; b = self.b; c = self.c; K = self.K;
             Deq = ones(0,size(A,1));feq=[];
-           
-           %convert these into equations on dual variables 
+
+            %convert these into equations on dual variables 
             if (self.K.f > 0)
                 Deq = A(:,1:self.K.f)';
                 feq = c(1:self.K.f);
@@ -260,11 +261,11 @@ classdef frlibPrg
                 K.f = 0;
                 A = A(:,self.K.f+1:end);
             end
-           
+
             Scellarray= [];
             while (1)
                 [success,A,c,K,Deq,feq,S] = feval(procReduce,A,c,K,Deq,feq);
-				[Deq,feq] = cleanLinear(Deq,feq);
+                [Deq,feq] = cleanLinear(Deq,feq);
                 Scellarray{end+1} = S;
                 if success == 0
                     break;
@@ -283,7 +284,6 @@ classdef frlibPrg
     methods(Static)
 
         function pass = CheckLor(x,eps)
-           
             pass = 1;
             if length(x) > 0
                 if x(1) - norm(x(2:end)) > -eps

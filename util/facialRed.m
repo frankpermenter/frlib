@@ -4,7 +4,7 @@ classdef facialRed
         
         function [x,numErr,infeas] = solveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
         
-            gurobiExists = ~isempty(which('gurobi'));
+            gurobiExists =  ~isempty(which('gurobi'));
            % glpkExists = ~isempty(which('glpk'));
             sedumiExists = ~isempty(which('sedumi'));
             
@@ -52,12 +52,16 @@ classdef facialRed
 
         function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd] = BuildDualLP(A,c,Feq,geq,W)
 
-            numGens = size(W,2);
+            numGens = size(W,1);
             numLam = size(Feq,1);   
             numEq = size(A,1)+1;
 
-            Aeq1 = [A*W,-Feq'];
-            Aeq2 = [c(:)'*W,-geq'];
+            if numGens == 0
+                error('No generators specified. size(W,1) = 0')
+            end
+            
+            Aeq1 = [A*W',-Feq'];
+            Aeq2 = [c(:)'*W',-geq'];
             Aeq = [Aeq1;Aeq2];
             Aeq = [Aeq,sparse(numEq,numGens)];
             beq = sparse(size(Aeq,1),1);
@@ -93,6 +97,7 @@ classdef facialRed
             
             numMu = size(Z.A,1);   
             
+        
             A = Z.lowerTri(Z.A);
             W = Z.lowerTri(W);
             
@@ -105,7 +110,7 @@ classdef facialRed
             
             %Remove dependent equations.
             if size(Aeq,1) > size(Aeq,2)
-                %[Aeq,beq] = cleanLinear(Aeq,beq);
+                [Aeq,beq] = cleanLinear(Aeq,beq);
             else
                 [r,~] = find(Aeq);
                 rKeep = unique(r);
@@ -137,14 +142,14 @@ classdef facialRed
             
            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
             
-            W = W';
+ 
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             success = numerr == 0 & infeas == 0 & -cost'*x > .4;
 
             if success
                 xtemp = x(1:numGens,1);
                 xtemp = sparse( xtemp > max(xtemp)*.0001);
-                spanS = W*xtemp; 
+                spanS = W'*xtemp; 
                 [A,c,K,T] = facialRed.ReducePrimal(Z,spanS);
             else
                 K = Z.K;
@@ -160,7 +165,6 @@ classdef facialRed
            
             Z = coneHelp(A,b,c,K);
             W = Z.extRaysDD();           
-            
             [success,A,c,K,T] = facialRed.PolyhedralPrimIter(Z,W);
 
         end
@@ -175,10 +179,18 @@ classdef facialRed
         end
 
         function [success,A,c,K,Deq,feq,S] = PolyhedralDualIter(Z,Deq,feq,W)
-         
-            W = W';
+        
+            numGens = size(W,1); 
+            K = Z.K;
+            A = Z.A;
+            b = Z.b;
+            c = Z.c;  
+            success = 0;
             S = [];
-            numGens = size(W,2);
+            
+            if (numGens == 0)
+                return;
+            end
             
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(Z.A,Z.c,Deq,feq,W);
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
@@ -186,9 +198,9 @@ classdef facialRed
     
             if success
                 xtemp = x(1:numGens,1);       
-                S = W*xtemp;
+                S = W'*xtemp;
                 xtemp = xtemp > max(xtemp)*.0001;
-                spanS = W*xtemp;
+                spanS = W'*xtemp;
                 [A,c,K,DeqN,feqN] = facialRed.ReduceDual(Z,spanS);
                 Deq = [Deq;DeqN];
                 feq = [feq;feqN];
@@ -211,8 +223,7 @@ classdef facialRed
                 W = Z.extRaysDD(); 
                 [success,A,c,K,Deq,feq,S] = facialRed.PolyhedralDualIter(Z,Deq,feq,W);
             end
-            
-            
+
         end
         
         function [success,A,c,K,Deq,feq,S] = DiagDualIter(A,c,K,Deq,feq)

@@ -1,10 +1,10 @@
 function [ns,U] = nullqr(A)
- 
+
     n = size(A,1);
     [q,r,e] = qr(A');
     p = find( abs(diag(r)) < 10^-8);
 
-    if ~isempty(p) 
+    if ~isempty(p)
         indxNull = min(p):size(q,2);
         indxOrth = setdiff(1:size(q,2),indxNull);
     else
@@ -15,5 +15,5 @@ function [ns,U] = nullqr(A)
     ns = q(:,indxNull);
     [r,~] = find(e(:,indxOrth));
     U  = A(:,r);
-   
+
 
