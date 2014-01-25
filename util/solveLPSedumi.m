@@ -2,7 +2,7 @@ function [x,infeas,numErr] = solveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
     Meq = size(Aeq,1);
     N = size(Aeq,2);
-    
+
     AineqBnd = speye(N);
     AineqUBnd = AineqBnd( ~isinf(ubnd), :);
     bineqUBnd = ubnd(~isinf(ubnd));
@@ -24,11 +24,11 @@ function [x,infeas,numErr] = solveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
     b = [beq;bineqEq];
     c = [c;sparse(numSlack,1)];
-    
+
     pars.fid = 0;
     [xopt,~,info] = sedumi(A,b,[],K,pars);
     x = sparse( xopt(1:N,1));
-    
+
     infeas = info.pinf == 1;
     numErr = info.numerr > 1;
 
