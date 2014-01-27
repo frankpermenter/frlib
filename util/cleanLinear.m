@@ -1,6 +1,6 @@
 function [A,b,T]= cleanLinear(A,b)
     T = speye(size(A,1));
-
+    
     if (b == 0)
         b = sparse(size(A,1),1);
     end

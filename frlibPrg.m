@@ -33,13 +33,6 @@ classdef frlibPrg
 
             self.Z = coneHelp(A,b,c,K); 
 
-            notSymmetricA = max(max(abs(self.Z.upperTri(A)-self.Z.lowerTri(A)))) > 10^-12;
-            notSymmetricC = max(max(abs(self.Z.upperTri(c)-self.Z.lowerTri(c)))) > 10^-12;
-
-            if (notSymmetricA || notSymmetricC) 
-                error('Rows of A and c must give symmetric matrices for psd variables. You can symmetrize by running [A,c]=makeSymmetric(A,c,K)');
-            end
-
             self.K = self.Z.K;
             self.A = self.Z.A;
             self.b = self.Z.b(:);
@@ -82,9 +75,12 @@ classdef frlibPrg
 
         end
 
-        function success = CheckPrimal(self,x)
+        function success = CheckPrimal(self,x,eps)
 
-            eps = 10^-8; 
+            if ~exist('eps','var') || isempty(eps)
+                eps = 10^-8;
+            end
+
             [l,q,r,s]=self.GetPrimalVars(x);
             pass = [];
 
@@ -98,14 +94,17 @@ classdef frlibPrg
                 pass(end+1) = self.CheckPSD( s{i},eps);
             end
 
-            pass(end+1) = norm(self.A*x-self.b) < 10^-4;
+            pass(end+1) = norm(self.A*x-self.b) < eps;
             success = all(pass==1);
         end
 
 
-        function success = CheckDual(self,y)
+        function success = CheckDual(self,y,eps)
 
-            eps = 10^-9;
+            if ~exist('eps','var') || isempty(eps)
+                eps = 10^-8;
+            end
+            
             [l,q,r,s]=self.GetDualSlack(y);
             pass = [];
             for i=1:length(q) 

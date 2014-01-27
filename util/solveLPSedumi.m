@@ -26,7 +26,12 @@ function [x,infeas,numErr] = solveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
     c = [c;sparse(numSlack,1)];
 
     pars.fid = 0;
-    [xopt,~,info] = sedumi(A,b,[],K,pars);
+    try
+        [xopt,~,info] = sedumi(A,b,[],K,pars);
+    catch
+        [A,b] = cleanLinear(A,b);
+        [xopt,~,info] = sedumi(A,b,[],K,pars);
+    end
     x = sparse( xopt(1:N,1));
 
     infeas = info.pinf == 1;

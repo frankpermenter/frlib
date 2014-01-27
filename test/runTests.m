@@ -163,18 +163,19 @@ display('Checking diagonal fr')
 prgD = prg.ReducePrimal('d');
 [x,y] = prgD.Solve();
 x0 = prgD.RecoverPrimal(x);
-pass  = prg.CheckPrimal(x0);
+pass  = prg.CheckPrimal(x0,10^-4);
 testPass(end+1) = pass & all( prgD.K.s == [6 56 11 1 1 0 11 1 1 0 11 11]);
 if ~(testPass(end))
     warning('Test case failed')
 end
-display('Checking diagonally dominant fr')
+
 %diagonally dominant
+display('Checking diagonally dominant fr')
 prgDD = prgD.ReducePrimal('dd');
 [x,y] = prgDD.Solve();
-x0 = prgDD.RecoverPrimal(x);
-x1 = prgD.RecoverPrimal(x0);
-pass  = prg.CheckPrimal(x1);
+x1 = prgDD.RecoverPrimal(x);
+x2 = prgD.RecoverPrimal(x1);
+pass  = prg.CheckPrimal(x2,10^-4);
 testPass(end+1) = pass;
 
 if ~(testPass(end))

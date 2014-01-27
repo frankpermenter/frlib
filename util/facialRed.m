@@ -140,11 +140,12 @@ classdef facialRed
                 return;
             end
 
-           [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
-
-
+            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
+               
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-            success = numerr == 0 & infeas == 0 & -cost'*x > .4;
+            success = numerr == 0 & infeas == 0 & -cost'*x > .1;
+
+           
 
             if success
                 xtemp = x(1:numGens,1);
@@ -194,6 +195,7 @@ classdef facialRed
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(Z.A,Z.c,Deq,feq,W);
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
 
             if success
@@ -451,11 +453,6 @@ classdef facialRed
 
             end
         end
-
-
-
-
-
 
         function [success,A,c,K,Deq,feq] = SDDDualIter(A,c,K,Deq,feq)
 
