@@ -218,6 +218,25 @@ classdef coneHelp
 
     end
 
+    
+    function A = desymmetrize(self,A)
+       
+        indxDiag = cell2mat(self.indxDiag);
+        temp = A;
+        temp(:,indxDiag) =  temp(:,indxDiag)/2;
+        
+        indxRescale = self.lowerTriIndx();
+        indxRescale = indxRescale( indxRescale >= indxDiag(1));
+        temp(:,indxRescale) = temp(:,indxRescale)*2;
+        temp = self.lowerTri(temp);
+        
+        A = sparse( size(A,1), size(A,2));
+        A(:,self.lowerTriIndx()) = temp;
+        
+    end
+    
+    
+    
     function A = flqrCols(self,A)
        cols = 1:max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
        A = A(:,cols);
