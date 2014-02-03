@@ -1,10 +1,14 @@
 function [A,b,T]= cleanLinear(A,b,useQR)
   
+    if ~exist('useQR','var')
+        useQR = 0;
+    end
+
     if (b == 0)
         b = sparse(size(A,1),1);
     end
    
-    if (exist('useQR','var'))
+    if (useQR)
         R = qr(sparse([A,b]'));
         [r,c] = find(R);
         %the first non-zero entry on a row implies
@@ -14,8 +18,7 @@ function [A,b,T]= cleanLinear(A,b,useQR)
     else
         eqKeep = find(any(A,2));
     end
-    
-  
+     
     %a map that maps dual variables for original system to updated
     %Dual variable for equation we've removed gets mapped to 0
     %Dual variable for equation we keep gets mapped to itself

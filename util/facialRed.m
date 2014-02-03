@@ -31,6 +31,7 @@ classdef facialRed
                 else
                     x = result.x;
                 end
+
                 return
             end
 
@@ -141,11 +142,9 @@ classdef facialRed
             end
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildPrimLP(Z,W);
-               
+
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             success = numerr == 0 & infeas == 0 & -cost'*x > .1;
-
-           
 
             if success
                 xtemp = x(1:numGens,1);
@@ -195,11 +194,11 @@ classdef facialRed
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(Z.A,Z.c,Deq,feq,W);
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-            
+
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
 
             if success
-                xtemp = x(1:numGens,1);
+                xtemp = sparse(x(1:numGens,1));
                 S = W'*xtemp;
                 xtemp = xtemp > max(xtemp)*.0001;
                 spanS = W'*xtemp;
@@ -303,7 +302,6 @@ classdef facialRed
             As = []; cs = [];
             for i = 1:length(K.s)
 
-
                 [s,e] = Z.GetIndx('s',i);
                 S = mat(SblkDiag(s:e));
 
@@ -316,7 +314,10 @@ classdef facialRed
                 %end
 
                 V = S;
-                U = nullqr(V);
+                [~,nzcol] = find(S);
+                V = V(:,nzcol);
+
+                U = nullqr(S);
 
                 if (K.s(i) > 0)
                     K.s(i) = size(U,2);
@@ -329,7 +330,6 @@ classdef facialRed
                 end
 
             end
-
 
             if (size(newLinearA,2) > 0)
 
@@ -405,13 +405,16 @@ classdef facialRed
                     tr = tr + trace(Stemp);
                 end
             end
+
             prg = prg.withEqs(tr-1);
+
             try
                 sol = prg.optimize();
                 success = sol.info.pinf == 0 & sol.info.numerr == 0;
             catch
                 success = 0;
             end
+
             S =[];
             if success
                 for i=1:length(S)
@@ -420,6 +423,7 @@ classdef facialRed
                 end
                 [A,c,K,T] = facialRed.ReducePrimal(Z,S);
             end
+
         end
 
 

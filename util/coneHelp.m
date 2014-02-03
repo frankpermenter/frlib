@@ -218,25 +218,25 @@ classdef coneHelp
 
     end
 
-    
+
     function A = desymmetrize(self,A)
-       
+
         indxDiag = cell2mat(self.indxDiag);
         temp = A;
         temp(:,indxDiag) =  temp(:,indxDiag)/2;
-        
+
         indxRescale = self.lowerTriIndx();
         indxRescale = indxRescale( indxRescale >= indxDiag(1));
         temp(:,indxRescale) = temp(:,indxRescale)*2;
         temp = self.lowerTri(temp);
-        
+
         A = sparse( size(A,1), size(A,2));
         A(:,self.lowerTriIndx()) = temp;
-        
+
     end
-    
-    
-    
+
+
+
     function A = flqrCols(self,A)
        cols = 1:max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
        A = A(:,cols);
@@ -371,19 +371,34 @@ classdef coneHelp
 
     function [Aeq] = AtimesV(self,V,num)
 
-        [startPos,endPos]=self.GetIndx('s',num);
-        A = self.A(:,startPos:endPos);
-        for i=1:size(A,1)
-            Aeq(:,i) = mat(A(i,:))*V;
+
+
+        if (nnz(V) == 1)
+           n = self.K.s(num);
+           Aeq = self.A(:,self.ColIndx(num,find(V)))';
+        else
+
+            [startPos,endPos]=self.GetIndx('s',num);
+             A = self.A(:,startPos:endPos);
+            for i=1:size(A,1)
+                Aeq(:,i) = mat(A(i,:))*V;
+            end
+
         end
 
     end
 
     function [beq] = CtimesV(self,V,num)
 
-        [startPos,endPos]=self.GetIndx('s',num);
-        C = self.c(startPos:endPos);
-        beq = mat(C)*V;
+        if (nnz(V) == 1)
+            n = self.K.s(num);
+            beq = self.c(self.ColIndx(num,find(V)));
+        else
+
+            [startPos,endPos] = self.GetIndx('s',num);
+            C = self.c(startPos:endPos);
+            beq = mat(C)*V;
+        end
 
     end
 
@@ -405,6 +420,18 @@ classdef coneHelp
         y = C(:)'*X;
 
     end
+
+
+    function y = ColIndx(self,num,colIndx)
+
+        [startPos,~] = self.GetIndx('s',num);
+        n = self.K.s(num);
+        startPos = (colIndx-1)*n+startPos;
+        y = [startPos:startPos+n-1];
+
+    end
+
+
 
     %Find variables in cone that vanish if others vanish
     function [indxZero,Knew] = FindMustVanish(self,indx)

@@ -40,9 +40,19 @@ classdef frlibPrg
 
         end
 
-        function [x,y,info] = Solve(self)
-
-            [A,b,T] = cleanLinear(self.A,self.b); 
+        function [x,y,info] = Solve(self,opts)
+            
+            if ~exist('opts','var')
+                opts = [];
+            end
+            
+            if isfield(opts,'useQR')
+                useQR = opts.useQR;
+            else
+                useQR = 0;
+            end
+            
+            [A,b,T] = cleanLinear(self.A,self.b,useQR); 
             [x,y,info] = sedumi(A,b,self.c,self.K);
             y = T*y;
 
@@ -79,7 +89,7 @@ classdef frlibPrg
                 K.r = [];
             end
 
-            [x,y]=spot_mosek(A,self.b,c(:),K);
+            [x,y] = spot_mosek(A,self.b,c(:),K);
 
         end
         
