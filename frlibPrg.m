@@ -49,6 +49,46 @@ classdef frlibPrg
         end
 
 
+        function [y] = SolveDual(self)
+
+            [A,b,T] = cleanLinear(self.A,self.b); 
+
+            if (self.K.f > 0) 
+
+                [s,e] = self.Z.GetIndx('f',1);
+                Af = self.A(:,s:e);
+                cf = self.c(s:e);
+                [y0,varsPresolved,tRemoveVars,tAddVars] = PreSolveLinearEq(Af',cf(:));
+                cReduced = self.c(:)-A(varsPresolved,:)'*y0;
+                AReduced = tRemoveVars*A; 
+                bReduced = tRemoveVars*b;
+
+                [~,yReduced] = sedumi(AReduced,bReduced,cReduced,self.K);
+
+                y = tAddVars*yReduced;
+                y(varsPresolved) = y0;
+
+            else
+                [x,y,info] = sedumi(A,b,self.c,self.K);
+            end
+            y = T*y;
+
+        end
+
+       function [x] = SolvePrimal(self)
+
+            [A,b] = cleanLinear(self.A,self.b); 
+            
+            [x0,varsPresolved,tRemoveVars,tAddVars,AReduced,bReduced] = PreSolveLinearEq(A,b);
+            cReduced = tRemoveVars*self.c(:);
+      
+            [x,~] = sedumi(AReduced,bReduced,cReduced,self.K);
+
+            x = tAddVars*x;
+            x(varsPresolved) = x0;
+
+        end
+
         function [dimOut] = GetSubSpaceDim(self,Primal)
 
             A = cleanLinear(self.A,self.b);
@@ -96,6 +136,7 @@ classdef frlibPrg
 
             pass(end+1) = norm(self.A*x-self.b) < eps;
             success = all(pass==1);
+
         end
 
 
@@ -229,7 +270,7 @@ classdef frlibPrg
                 T = U; 
             end
 
-            prg = reducedPrg(A,b,c,K,T);
+            prg = reducedPrg(A,b,c,K,T,[],'primal');
 
         end
 
@@ -275,7 +316,7 @@ classdef frlibPrg
             A = [Deq',A];
             c = [feq;c(:)]; 
             K.f = K.f + length(feq);
-            prg = reducedPrg(A,b,c,K,[],Scellarray);
+            prg = reducedPrg(A,b,c,K,[],Scellarray,'dual');
 
         end
     end

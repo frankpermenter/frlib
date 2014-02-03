@@ -3,11 +3,12 @@ classdef reducedPrg < frlibPrg
     properties
         T
         S
+        type
     end
 
     methods
 
-        function self = reducedPrg(A,b,c,K,T,S)
+        function self = reducedPrg(A,b,c,K,T,S,type)
 
             self@frlibPrg(A,b,c,K);
 
@@ -22,6 +23,7 @@ classdef reducedPrg < frlibPrg
 
             self.T = T;
             self.S = S;
+
         end
 
         function xr = RecoverPrimal(self,x);
