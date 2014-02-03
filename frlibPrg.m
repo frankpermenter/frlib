@@ -40,9 +40,19 @@ classdef frlibPrg
 
         end
 
-        function [x,y,info] = Solve(self)
-
-            [A,b,T] = cleanLinear(self.A,self.b); 
+        function [x,y,info] = Solve(self,opts)
+            
+            if ~exist('opts','var')
+                opts = [];
+            end
+            
+            if isfield(opts,'useQR')
+                useQR = opts.useQR;
+            else
+                useQR = 0;
+            end
+            
+            [A,b,T] = cleanLinear(self.A,self.b,useQR); 
             [x,y,info] = sedumi(A,b,self.c,self.K);
             y = T*y;
 
@@ -88,6 +98,42 @@ classdef frlibPrg
             x(varsPresolved) = x0;
 
         end
+
+
+        function [x,y,info] = SolveMosek(self)
+
+             
+            A = self.Z.desymmetrize(self.A);
+            c = self.Z.desymmetrize(self.c(:)');
+            info = [];
+
+            K = self.K;
+            if ~isfield(K,'f') || K.f == 0
+            %    K.f = [];
+            end
+
+            if ~isfield(K,'l') || K.l == 0
+           %     K.l = []; 
+            end
+
+            if ~isfield(K,'q') || all(K.q == 0)
+                K.q = [];
+            end
+
+            if ~isfield(K,'s') || all(K.s == 0)
+               K.s = [];
+            else
+               K.s = K.s(K.s ~= 0); 
+            end
+
+            if ~isfield(K,'r') || all(K.r == 0)
+                K.r = [];
+            end
+
+            [x,y] = spot_mosek(A,self.b,c(:),K);
+
+        end
+        
 
         function [dimOut] = GetSubSpaceDim(self,Primal)
 
@@ -243,7 +289,7 @@ classdef frlibPrg
             while (1)
 
                 [success,A,c,K,Tform] = feval(procReduce,A,b,c,K);
-%                [A,b] = cleanLinear(A,b);
+                [A,b] = cleanLinear(A,b);
 
                 if success == 0
                    break;
