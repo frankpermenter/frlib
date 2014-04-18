@@ -1,13 +1,13 @@
 function [A,b,T]= cleanLinear(A,b,useQR)
   
+    if (size(A,1) ~= length(b))
+       error('Number of rows of A and b do not match.') 
+    end
+
     if ~exist('useQR','var')
         useQR = 0;
     end
 
-    if (b == 0)
-        b = sparse(size(A,1),1);
-    end
-   
     if (useQR)
         R = qr(sparse([A,b]'));
         [r,c] = find(R);
@@ -16,7 +16,7 @@ function [A,b,T]= cleanLinear(A,b,useQR)
         [~,indx] = unique(r,'first');
         eqKeep = c(indx);
     else
-        eqKeep = find(any(A,2));
+        eqKeep = find(any([A,b],2));
     end
      
     %a map that maps dual variables for original system to updated
