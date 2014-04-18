@@ -3,11 +3,8 @@ function T =  UtoT(U)
     [N,M]=size(U);
 
     %linear map of q(:) to (U*q)(:)
-    T1 = U;
-    for i=2:M
-        T1=blkdiag(T1,U);
-    end
-
+    T1 = kron(speye(M),U);
+   
     %linear map of (U*q)(:) to (U*q*U')(:)
     %for symmetric q
     T2 = sparse([]);
