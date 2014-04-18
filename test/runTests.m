@@ -38,7 +38,7 @@ prgDD = prg.ReduceDual('dd');
 opts.useQR = 1;
 [~,y] = prgDD.Solve(opts);
 
-testPass(end+1)  = prg.CheckDual(y) & prgDD.K.s == 2;
+testPass(end+1)  = prg.CheckDual(y,10^-4) & prgDD.K.s == 2;
 
 if ~(testPass(end))
     error('Test case failed')
@@ -48,7 +48,7 @@ end
 prgD = prg.ReduceDual('d');
 [~,y] = prgD.Solve(opts);
 
-testPass(end+1)  = prg.CheckDual(y) & prgDD.K.s == 2;
+testPass(end+1)  = prg.CheckDual(y,10^-4) & prgDD.K.s == 2;
 
 if ~(testPass(end))
     error('Test case failed')

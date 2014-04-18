@@ -1,4 +1,4 @@
-classdef reducedPrg < frlibPrg
+classdef reducedDualPrg < frlibPrg
 
     properties
         T
@@ -8,12 +8,12 @@ classdef reducedPrg < frlibPrg
 
     methods
 
-        function self = reducedPrg(A,b,c,K,T,S,type)
+        function self = reducedDualPrg(A,b,c,K,T,S,type)
 
             self@frlibPrg(A,b,c,K);
 
             if ~exist('T','var')
-                T = [];
+                T = speye(self.Z.NumVars);
             end
 
             if ~exist('S','var')

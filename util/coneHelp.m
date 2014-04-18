@@ -149,7 +149,40 @@ classdef coneHelp
        y = length(self.indxNNeg) > 0;
     end
 
+    
+    
+    function indx = getTriIndx(self,func)
+        
+        startIndx = self.GetIndx('s',1);
 
+        if isempty(startIndx)
+            indx = 1:size(self.A,2);
+            return
+        end
+
+        indx = [1:startIndx-1];
+        
+        for i=1:length(self.K.s)
+            [startIndx] = self.GetIndx('s',i);
+            indx = [indx, startIndx+find( feval(func,mat(1:self.K.s(i)^2)))'-1];
+        end 
+        
+    end
+    
+    
+    function indx =  lowerTriIndx2(self)
+
+        indx = self.getTriIndx(@tril);
+
+    end
+
+    function indx  =  upperTriIndx2(self)
+
+        indx = self.getTriIndx(@triu);
+
+    end
+    
+   
     function indx =  lowerTriIndx(self)
 
         startIndx = self.GetIndx('s',1);
@@ -238,16 +271,20 @@ classdef coneHelp
 
 
     function A = flqrCols(self,A)
+        
        cols = 1:max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
        A = A(:,cols);
+       
     end
 
 
     function mats = matsFromSubMat(self,U)
+        
         mats =[];
         for i=1:length(self.K.s)
             [mats] = [mats;self.matsFromSubMat_i(U,i)];
         end
+        
     end
 
     function extR = extRaysDD(self)
@@ -297,7 +334,7 @@ classdef coneHelp
 
     function UAU = ConjA(self,U,num)
 
-        [startPos,endPos]=self.GetIndx('s',num);
+        [startPos,endPos] = self.GetIndx('s',num);
         A = self.A(:,startPos:endPos);
 
         T = UtoT(U');
@@ -313,6 +350,33 @@ classdef coneHelp
         UCU = temp(:)';
 
     end
+    
+    
+    function [UAU,UCU,s] = ConjAandC(self,U,num)
+  
+        if exist('num','var')  
+            [startPos,endPos] = self.GetIndx('s',num);
+             T = UtoT(U');
+        else
+            T = speye(self.GetIndx('s',1)-1);
+            startPos = 1;
+            endPos = size(self.A,2);
+            for i=1:length(U)
+                T = blkdiag(T,UtoT(U{i}'));
+                s(i) = size(U{i},2);
+            end  
+            
+        end
+            
+        A = self.A(:,startPos:endPos);
+        C = self.c(startPos:endPos);
+
+        UAU = (T * A')';
+        UCU = (T*C)';
+        
+    end
+    
+    
 
     function A = matsFromSubMat_i(self,V,num)
 
@@ -371,11 +435,10 @@ classdef coneHelp
 
     function [Aeq] = AtimesV(self,V,num)
 
-
-
         if (nnz(V) == 1)
            n = self.K.s(num);
-           Aeq = self.A(:,self.ColIndx(num,find(V)))';
+           indx = self.ColIndx(num,find(V~=0));
+           Aeq = self.A(:,indx(1):indx(2))'*V(V~=0);
         else
 
             [startPos,endPos]=self.GetIndx('s',num);
@@ -392,9 +455,9 @@ classdef coneHelp
 
         if (nnz(V) == 1)
             n = self.K.s(num);
-            beq = self.c(self.ColIndx(num,find(V)));
+            indx = self.ColIndx(num,find(V~=0));
+            beq = self.c(indx(1):indx(2))*V(V~=0);
         else
-
             [startPos,endPos] = self.GetIndx('s',num);
             C = self.c(startPos:endPos);
             beq = mat(C)*V;
@@ -422,13 +485,14 @@ classdef coneHelp
     end
 
 
-    function y = ColIndx(self,num,colIndx)
+    function [y] = ColIndx(self,num,colIndx)
 
         [startPos,~] = self.GetIndx('s',num);
         n = self.K.s(num);
-        startPos = (colIndx-1)*n+startPos;
-        y = [startPos:startPos+n-1];
-
+        s = (colIndx-1)*n+startPos;
+        e = s+n-1;
+        y = [s,e];
+        
     end
 
 

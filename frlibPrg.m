@@ -68,15 +68,21 @@ classdef frlibPrg
                 [s,e] = self.Z.GetIndx('f',1);
                 Af = self.A(:,s:e);
                 cf = self.c(s:e);
-                [y0,varsPresolved,tRemoveVars,tAddVars] = PreSolveLinearEq(Af',cf(:));
-                cReduced = self.c(:)-A(varsPresolved,:)'*y0;
-                AReduced = tRemoveVars*A; 
-                bReduced = tRemoveVars*b;
+%                 [y0,varsPresolved,tRemoveVars,tAddVars] = PreSolveLinearEq(Af',cf(:));
+%                 cReduced = self.c(:)-A(varsPresolved,:)'*y0;
+%                 AReduced = tRemoveVars*A; 
+%                 bReduced = tRemoveVars*b;
+%[~,yReduced] = sedumi(AReduced,bReduced,cReduced,self.K);
+%                y = tAddVars*yReduced;
+%                y(varsPresolved) = y0;
 
-                [~,yReduced] = sedumi(AReduced,bReduced,cReduced,self.K);
+                [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K);
+                
+                
+                [~,yReduced] = sedumi(Ar,br,cr,Kr);
+                
+                y = Tr*yReduced+y0
 
-                y = tAddVars*yReduced;
-                y(varsPresolved) = y0;
 
             else
                 [x,y,info] = sedumi(A,b,self.c,self.K);
@@ -97,23 +103,26 @@ classdef frlibPrg
             x = tAddVars*x;
             x(varsPresolved) = x0;
 
-        end
+       end
 
 
-        function [x,y,info] = SolveMosek(self)
-
-             
-            A = self.Z.desymmetrize(self.A);
-            c = self.Z.desymmetrize(self.c(:)');
+       
+        function [y] = SolveDualMosek(self)
+                
+            [A,b,T] = cleanLinear(self.A,self.b); 
+            [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K); 
+            Z = coneHelp(Ar,br,cr,Kr);
+            A = Z.desymmetrize(Ar);
+            c = Z.desymmetrize(cr(:)');
             info = [];
 
-            K = self.K;
-            if ~isfield(K,'f') || K.f == 0
-            %    K.f = [];
+            K = Kr;
+            if ~isfield(K,'f') 
+                K.f = 0;
             end
 
-            if ~isfield(K,'l') || K.l == 0
-           %     K.l = []; 
+            if ~isfield(K,'l') 
+                K.l = 0;
             end
 
             if ~isfield(K,'q') || all(K.q == 0)
@@ -130,142 +139,54 @@ classdef frlibPrg
                 K.r = [];
             end
 
-            [x,y] = spot_mosek(A,self.b,c(:),K);
+            [~,y] = spot_mosek(A,br,c(:),K);
+            y = T*(Tr*y+y0);
+        end 
+       
+       
+       
+        function [x,y,info] = SolveMosek(self)
+
+   
+            A = self.Z.desymmetrize(self.A);
+            c = self.Z.desymmetrize(self.c(:)');
+            info = [];
+
+            K = self.K;
+            if ~isfield(K,'f') 
+                K.f = 0;
+            end
+
+            if ~isfield(K,'l') 
+                K.l = 0;
+            end
+
+            if ~isfield(K,'q') || all(K.q == 0)
+                K.q = [];
+            end
+
+            if ~isfield(K,'s') || all(K.s == 0)
+               K.s = [];
+            else
+               K.s = K.s(K.s ~= 0); 
+            end
+
+            if ~isfield(K,'r') || all(K.r == 0)
+                K.r = [];
+            end
+
+            [x,y] = spot_mosek(A,self.b,c(:),K,struct('verbose',1));
 
         end
         
-
-        function [dimOut] = GetSubSpaceDim(self,Primal)
-
-            A = cleanLinear(self.A,self.b);
-            dimC = self.K.l + self.K.q + self.K.r;
-            dimC = dimC + sum(self.K.s.^2/2+self.K.s/2);
-
-            dimP = self.K.f + dimC - size(A,1);
-
-            A = cleanLinear(self.A,self.b*0); 
-            dimD = size(A,1);
-
-            dualEqs = cleanLinear(self.A(:,1:self.K.f),self.c(1:self.K.f)); 
-            dimD = dimD - size(dualEqs,2);
-
-            if (dimP + dimD ~= dimC)
-                %error('dim calc error')
-            end
-
-            if Primal
-                dimOut = dimP;
-            else
-                dimOut = dimD;
-            end
-
+        function pass = CheckPrimal(self,x,eps)
+           pass = SolUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
+           
         end
-
-        function success = CheckPrimal(self,x,eps)
-
-            if ~exist('eps','var') || isempty(eps)
-                eps = 10^-8;
-            end
-
-            [l,q,r,s]=self.GetPrimalVars(x);
-            pass = [];
-
-            pass(end+1) = all(l >= 0);
-
-            for i=1:length(q) 
-                pass(end+1) = self.CheckLor( q{i},eps);
-            end
-
-            for i=1:length(s)
-                pass(end+1) = self.CheckPSD( s{i},eps);
-            end
-
-            pass(end+1) = norm(self.A*x-self.b) < eps;
-            success = all(pass==1);
-
+        
+        function pass = CheckDual(self,y,eps)
+           pass = SolUtil.CheckDual(y,self.A,self.b,self.c,self.K,eps);  
         end
-
-
-        function success = CheckDual(self,y,eps)
-
-            if ~exist('eps','var') || isempty(eps)
-                eps = 10^-8;
-            end
-            
-            [l,q,r,s]=self.GetDualSlack(y);
-            pass = [];
-            for i=1:length(q) 
-                pass(end+1) = self.CheckLor( q{i},eps);
-            end
-
-            for i=1:length(s)
-                pass(end+1) = self.CheckPSD( s{i},eps);
-            end
-            success = all(pass == 1);
-
-        end
-
-        function [nneg,lor,rlor,psd] = GetDualSlack(self,y)
-
-            K = self.K;
-            c = self.c;
-            A = self.A;
-            offset = K.f;
-            indx = 1:K.f;
-            freeDual = c(indx)' - y'*A(:,indx);
-
-            indx = offset+[1:K.l];
-            nneg = c(indx)' - y'*A(:,indx);
-            offset = offset + K.l;
-
-            for i=1:length(K.q)
-                indx = offset + [1:K.q(i)];
-                lor{i} = c(indx)' - y'*A(:,indx);
-                offset = offset + K.q(i);
-            end
-
-            for i=1:length(K.r) 
-                indx = offset + [1:K.r(i)];
-                rlor{i} = c(indx)' - y'*A(:,indx);
-                offset = offset + K.r(i);
-            end
-
-            for i=1:length(K.s)
-                indx = offset + [1:K.s(i).^2];
-                psd{i} = mat(c(indx)' - y'*A(:,indx));
-                offset = offset + K.s(i).^2;
-            end
-
-        end
-
-        function [nneg,lor,rlor,psd] = GetPrimalVars(self,x)
-
-            K = self.K;
-            offset = K.f;
-
-            indx = offset+[1:K.l];
-            nneg = x(indx);
-            offset = offset + K.l;
-
-            for i=1:length(K.q)
-                indx = offset + [1:K.q(i)];
-                lor{i} = x(indx);
-                offset = offset + K.q(i);
-            end
-
-            for i=1:length(K.r) 
-                indx = offset + [1:K.r(i)];
-                rlor{i} = x(indx);
-                offset = offset + K.r(i);
-            end
-            for i=1:length(K.s)
-                indx = offset + [1:K.s(i).^2];
-                psd{i} = mat(x(indx));
-                offset = offset + K.s(i).^2;
-            end
-
-        end
-
 
         function [prg] = ReducePrimal(self,method)
             method = lower(method);
@@ -285,15 +206,20 @@ classdef frlibPrg
             A = self.A; b = self.b; c = self.c; K = self.K;
             T = [];
             firstPass = 1; 
-
+            Ua = [];
+            Sa = [];
+            
             while (1)
 
-                [success,A,c,K,Tform] = feval(procReduce,A,b,c,K);
-                [A,b] = cleanLinear(A,b);
+                [success,A,c,K,Tform,S] = feval(procReduce,A,b,c,K);
+               % [A,b] = cleanLinear(A,b);
 
                 if success == 0
                    break;
                 end
+                
+                Ua{end+1} = Tform;
+                Sa{end+1} = S;
 
                 if iscell(Tform) 
                     for i=1:length(Tform)
@@ -314,9 +240,10 @@ classdef frlibPrg
                 firstPass = 0;
 
                 T = U; 
+              
             end
 
-            prg = reducedPrg(A,b,c,K,T,[],'primal');
+            prg = reducedPrimalPrg(A,b,c,K,Ua,Sa,self.Z);
 
         end
 
@@ -362,32 +289,9 @@ classdef frlibPrg
             A = [Deq',A];
             c = [feq;c(:)]; 
             K.f = K.f + length(feq);
-            prg = reducedPrg(A,b,c,K,[],Scellarray,'dual');
+            prg = reducedDualPrg(A,b,c,K,[],Scellarray,'dual');
 
         end
-    end
-
-    methods(Static)
-
-        function pass = CheckLor(x,eps)
-            pass = 1;
-            if length(x) > 0
-                if x(1) - norm(x(2:end)) > -eps
-                    pass = 1;
-                else
-                    pass = 0;
-                end
-            end
-        end
-
-        function pass = CheckPSD(x,eps)
-            if (min(eig(x)) > -eps) 
-                pass = 1;
-            else
-                pass = isempty(x);
-            end
-        end
-
     end
 
 end

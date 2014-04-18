@@ -4,9 +4,9 @@ classdef facialRed
 
         function [x,numErr,infeas] = solveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
-            gurobiExists =  ~isempty(which('gurobi'));
+            gurobiExists = 0; ~isempty(which('gurobi'));
            % glpkExists = ~isempty(which('glpk'));
-            sedumiExists = ~isempty(which('sedumi'));
+            sedumiExists = 0; ~isempty(which('sedumi'));
 
             numErr = 0;
             infeas = 0;
@@ -20,6 +20,7 @@ classdef facialRed
                 model.sense = char( ['<'*ones(length(bineq),1);'='*ones(length(beq),1)]);
 
                 params.method = 1;
+                params.crossover = 0;
                 params.outputflag = 0;
                 result = gurobi(model,params);
                 flag = result.status;
@@ -127,7 +128,7 @@ classdef facialRed
 
         end
 
-        function [success,A,c,K,T] = PolyhedralPrimIter(Z,W)
+        function [success,A,c,K,T,S] = PolyhedralPrimIter(Z,W)
 
             numGens = size(W,1);
             K = Z.K;
@@ -135,6 +136,7 @@ classdef facialRed
             b = Z.b;
             c = Z.c;
             T =[];
+            S = [];
             success = 0;
 
             if (numGens == 0)
@@ -148,7 +150,8 @@ classdef facialRed
 
             if success
                 xtemp = x(1:numGens,1);
-                xtemp = sparse( xtemp > max(xtemp)*.0001);
+                xtemp = sparse( xtemp > max(xtemp)*.01);
+                S = x(numGens+1:numGens+size(Z.A,1));
                 spanS = W'*xtemp;
                 [A,c,K,T] = facialRed.ReducePrimal(Z,spanS);
             else
@@ -161,20 +164,20 @@ classdef facialRed
 
         end
 
-        function [success,A,c,K,T] = DiagDomPrimIter(A,b,c,K)
+        function [success,A,c,K,T,S] = DiagDomPrimIter(A,b,c,K)
 
             Z = coneHelp(A,b,c,K);
             W = Z.extRaysDD();
-            [success,A,c,K,T] = facialRed.PolyhedralPrimIter(Z,W);
+            
+            [success,A,c,K,T,S] = facialRed.PolyhedralPrimIter(Z,W);
 
         end
 
-        function [success,A,c,K,T] = DiagPrimIter(A,b,c,K)
+        function [success,A,c,K,T,S] = DiagPrimIter(A,b,c,K)
 
             Z = coneHelp(A,b,c,K);
             W = Z.extRaysD();
-
-            [success,A,c,K,T] = facialRed.PolyhedralPrimIter(Z,W);
+            [success,A,c,K,T,S] = facialRed.PolyhedralPrimIter(Z,W);
 
         end
 
@@ -194,7 +197,6 @@ classdef facialRed
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd] = facialRed.BuildDualLP(Z.A,Z.c,Deq,feq,W);
             [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
 
             if success
@@ -251,7 +253,9 @@ classdef facialRed
 
             [s,e] = Z.GetIndx('l',1);
             S = SblkDiag(s:e);
+            
             if (any(S))
+                
                 colsRemove = find(S)+s-1;
                 colsKeep = setdiff(s:e,colsRemove);
                 A = [A,Z.A(:,colsKeep)];
@@ -259,17 +263,22 @@ classdef facialRed
                 Deq = Z.A(:,colsRemove)';
                 feq = Z.c(colsRemove);
                 K.l = K.l-length(colsRemove);
+                
             else
+                
                 A = [A,Z.A(:,s:e)];
                 c = [c,Z.c(s:e)'];
+                
             end
 
             newLinearA=[];
             newLinearC=[];
 
             for i=1:length(Z.K.q)
+                
                 [s,e] = Z.GetIndx('q',i);
                 S = SblkDiag(s:e);
+                
                 if (any(S))
                     [DeqTemp,feqTemp,ineqA,ineqC] = facialRed.ReduceLorentzDual(S,Z.A(:,s:e),Z.c(s:e));
                     Deq = [Deq;DeqTemp];
@@ -281,11 +290,14 @@ classdef facialRed
                     A = [A,Z.A(:,s:e)];
                     c = [c,Z.c(s:e)'];
                 end
+                
             end
 
             for i=1:length(Z.K.r)
+                
                 [s,e] = Z.GetIndx('r',i);
                 S = SblkDiag(s:e);
+                
                 if (any(S) )
                     [DeqTemp,feqTemp,ineqA,ineqC] = facialRed.ReduceLorentzDual(S,Atemp,c);
                     Deq = [Deq;DeqTemp];
@@ -297,51 +309,69 @@ classdef facialRed
                     A = [A,Z.A(:,s:e)];
                     c = [c,Z.c(s:e)'];
                 end
+                
             end
 
             As = []; cs = [];
+            
+            indicesFlag = zeros(size(Z.A,2),1);
+            
             for i = 1:length(K.s)
 
                 [s,e] = Z.GetIndx('s',i);
                 S = mat(SblkDiag(s:e));
+                Aconj = Z.A(:,s:e);
+                Cconj = Z.c(s:e);
 
-                %if ( any( eigs(S) <= -10^-12))
-                %    error('S must be PSD');
-                %end
-
-                %if  any(any(abs(S-S') > 10^-12))
-                %    error('S must be symmetric');
-                %end
-
-                V = S;
-                [~,nzcol] = find(S);
-                V = V(:,nzcol);
-
-                U = nullqr(S);
-
-                if (K.s(i) > 0)
-                    K.s(i) = size(U,2);
-                    As = [As,Z.ConjA(U,i)];
-                    cs = [cs,Z.ConjC(U,i)];
+                if (nnz(diag(S)) == nnz(S))
+                   diagonalS = true; 
+                else
+                   diagonalS = false; 
+                end
+  
+                if (diagonalS)
+                    
+                    rowColFlag = zeros(K.s(i),K.s(i));
+                    rowColKeep = find(diag(S)==0);
+                    rowColFlag(rowColKeep,rowColKeep) = 1;
+                     
+                    Aconj = Aconj(:,rowColFlag(:) > 0);
+                    Cconj = Cconj(rowColFlag(:) > 0 )';
+                    
+                    rowColFlag = zeros(K.s(i),K.s(i));
+                    rowColFlag(:,diag(S)~=0) = 1;
+                    indicesFlag(find(rowColFlag(:)) + s-1) = 1;
+                 
+                    K.s(i) = length(rowColKeep);  
+                    
+                else
+                    
+                    V = S(:,any(S~=0,2));
+                    U = nullqr(S);
+                   
+                    [Aconj,Cconj] = Z.ConjAandC(U,i);
+                    
                     for j=1:size(V,2)
                         Deq = [Deq;Z.AtimesV(V(:,j),i)];
                         feq = [feq;Z.CtimesV(V(:,j),i)];
                     end
+                    
+                    K.s(i) = size(U,2);
+                    
                 end
-
+                
+                As = [As,Aconj];
+                cs = [cs,Cconj];  
+            end
+  
+            if any(indicesFlag)
+                Deq = [Deq;Z.A(:,indicesFlag > 0)'];
+                feq = [feq;Z.c(indicesFlag > 0)];
             end
 
-            if (size(newLinearA,2) > 0)
-
-                insertPoint = K.l+K.f+1;
-                A = [A(:,1:insertPoint-1),newLinearA,A(:,insertPoint:end)]
-                c = [c(1:insertPoint-1),newLinearC,c(insertPoint:end)]
-                K.l = K.l + size(newLinearA,2);
-
-            end
 
             A = [A, As];
-            c = [c, cs];
+            c = [c(:)', cs(:)'];
 
         end
 
@@ -362,13 +392,13 @@ classdef facialRed
                 [s,e] = Z.GetIndx('s',i);
                 S = mat(SblkDiag(s:e));
 
-               % if ( any( eigs(S) <= -10^-12))
-               %     error('S must be PSD');
-               % end
+                if ( any( eig(S) <= -10^-12))
+                    error('S must be PSD');
+                end
 
-               % if any(any(abs(S-S')) > 10^-12)
-               %     error('S must be symmetric');
-               % end
+                if any(any(abs(S-S')) > 10^-12)
+                    error('S must be symmetric');
+                end
 
                 U = nullqr(S);
                 if (K.s(i) > 0)
@@ -377,6 +407,7 @@ classdef facialRed
                     cs = [cs(:)',Z.ConjC(U,i)];
                 end
                 T{i} = U;
+                
             end
 
             A = [A, As];
@@ -447,7 +478,7 @@ classdef facialRed
 
                 % (c-A'y) must be parallel to sPerp
                 % (c-A'y) - P(c-A'y) = 0
-                %
+               
                 Deq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*A';
                 feq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*c;
 
