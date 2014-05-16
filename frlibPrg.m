@@ -8,36 +8,51 @@ classdef frlibPrg
     end
 
     properties(GetAccess=protected)
-        Z
+        cone
     end
 
     methods
 
+       
         function self = frlibPrg(A,b,c,K)
 
+            
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
-
-
-            if isempty(c)
-                c = sparse(size(A,2),1);
+ 
+            
+            self.cone = ConeBase(K); 
+             
+            if  isempty(b)
+                b = zeros(size(A,1),1);
             end
 
-            if isempty(b)
-                b = sparse(size(A,1),1);
+            if  isempty(c)
+                c = zeros(size(A,2),1);
+            end
+            
+            if self.cone.NumVar ~= size(A,2)
+                error(['Cone sizes do not match columns of A. Num vars: ',num2str(self.cone.NumVar),' Num Col: ', num2str(size(A,2))]);
             end
 
-            c = c(:)';
-            [A,c] = makeSymmetric(A,c,K);
-
-            self.Z = coneHelp(A,b,c,K); 
-
-            self.K = self.Z.K;
-            self.A = self.Z.A;
-            self.b = self.Z.b(:);
-            self.c = self.Z.c(:);
-
+            if length(b) ~= size(A,1)
+                error(['Number of rows of A do not match length of b. Num rows: ',num2str(size(A,1)),', Length b: ', num2str(length(b))]);
+            end
+            
+            
+            if self.cone.NumVar ~= length(c)
+                error(['Number of variables do not match length of c. Num vars: ',num2str(self.cone.NumVar),', Length c: ', num2str(length(c))]);
+            end
+          
+           
+            [A,c] = makeSymmetric(A,c(:)',K);  
+            
+            self.A = A;
+            self.c = c;
+            self.b = b;
+            self.K = self.cone.K;
+            
         end
 
         function [x,y,info] = Solve(self,opts)
@@ -65,28 +80,21 @@ classdef frlibPrg
 
             if (self.K.f > 0) 
 
-                [s,e] = self.Z.GetIndx('f',1);
+                [s,e] = self.cone.GetIndx('f',1);
                 Af = self.A(:,s:e);
                 cf = self.c(s:e);
-%                 [y0,varsPresolved,tRemoveVars,tAddVars] = PreSolveLinearEq(Af',cf(:));
-%                 cReduced = self.c(:)-A(varsPresolved,:)'*y0;
-%                 AReduced = tRemoveVars*A; 
-%                 bReduced = tRemoveVars*b;
-%[~,yReduced] = sedumi(AReduced,bReduced,cReduced,self.K);
-%                y = tAddVars*yReduced;
-%                y(varsPresolved) = y0;
+
 
                 [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K);
-                
-                
                 [~,yReduced] = sedumi(Ar,br,cr,Kr);
                 
-                y = Tr*yReduced+y0
+                y = Tr*yReduced+y0;
 
 
             else
                 [x,y,info] = sedumi(A,b,self.c,self.K);
             end
+            
             y = T*y;
 
         end
@@ -107,13 +115,13 @@ classdef frlibPrg
 
 
        
-        function [y] = SolveDualMosek(self)
+        function [x,y] = SolveMosek(self)
                 
             [A,b,T] = cleanLinear(self.A,self.b); 
             [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K); 
-            Z = coneHelp(Ar,br,cr,Kr);
-            A = Z.desymmetrize(Ar);
-            c = Z.desymmetrize(cr(:)');
+            Z = ConeBase(Kr);
+            A = Z.Desymmetrize(Ar);
+            c = Z.Desymmetrize(cr(:)');
             info = [];
 
             K = Kr;
@@ -139,17 +147,18 @@ classdef frlibPrg
                 K.r = [];
             end
 
-            [~,y] = spot_mosek(A,br,c(:),K);
+            [x,y] = spot_mosek(A,br,c(:),K,struct('verbose',1));
+
             y = T*(Tr*y+y0);
+            
         end 
        
        
        
-        function [x,y,info] = SolveMosek(self)
+        function [x,y,info] = SolveMosek2(self)
 
-   
-            A = self.Z.desymmetrize(self.A);
-            c = self.Z.desymmetrize(self.c(:)');
+            A = self.cone.Desymmetrize(self.A);
+            c = self.cone.Desymmetrize(self.c(:)');
             info = [];
 
             K = self.K;
@@ -189,61 +198,40 @@ classdef frlibPrg
         end
 
         function [prg] = ReducePrimal(self,method)
-            method = lower(method);
-
+            
+            method = lower(method); 
             if (strcmp(method,'sdd'))
                 procReduce = @facialRed.SDDPrimIter;
             end
 
             if (strcmp(method,'d'))
-                procReduce = @facialRed.DiagPrimIter;
+                procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'d',cone,Kface);
             end
 
-            if (strcmp(method,'dd'))
-                procReduce = @facialRed.DiagDomPrimIter;
+            if strcmp(method,'dd')
+                 procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'dd',cone,Kface);
             end
 
-            A = self.A; b = self.b; c = self.c; K = self.K;
-            T = [];
-            firstPass = 1; 
-            Ua = [];
-            Sa = [];
-            
+            A = self.A; b = self.b; c = self.c; Kface = self.K;
+            U = cell(1,length(self.K.s)); V = U;
+            Uarry = {}; Sarry = {}; Karry = {}; 
+
             while (1)
-
-                [success,A,c,K,Tform,S] = feval(procReduce,A,b,c,K);
-               % [A,b] = cleanLinear(A,b);
+                
+                [success,U,Kface,S] = procReduce(self,U,self.cone,Kface);
+                if (success)
+                    Uarry{end+1} = U;
+                    Sarry{end+1} = S;
+                    Karry{end+1} = Kface;
+                end
 
                 if success == 0
-                   break;
+                    break;
                 end
                 
-                Ua{end+1} = Tform;
-                Sa{end+1} = S;
-
-                if iscell(Tform) 
-                    for i=1:length(Tform)
-                        if (firstPass)
-                            U{i} = Tform{i};
-                        else
-                            U{i} = U{i}*Tform{i};
-                        end
-                    end
-                else
-                    if (firstPass)
-                         U = Tform;
-                     else
-                         U = U*Tform;
-                     end
-                end
-
-                firstPass = 0;
-
-                T = U; 
-              
             end
 
-            prg = reducedPrimalPrg(A,b,c,K,Ua,Sa,self.Z);
+            prg = reducedPrimalPrg(A,b,c,self.K,Karry,Uarry,Sarry);
 
         end
 
@@ -255,43 +243,37 @@ classdef frlibPrg
             end
 
             if (strcmp(method,'d'))
-                procReduce = @facialRed.DiagDualIter;
+                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
             end
 
             if strcmp(method,'dd')
-                procReduce = @facialRed.DiagDomDualIter;
+                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'dd',cone,Kface);
             end
 
-            A = self.A; b = self.b; c = self.c; K = self.K;
-            Deq = ones(0,size(A,1));feq=[];
+            A = self.A; b = self.b; c = self.c; Kface = self.K;
+            U = cell(1,length(self.K.s)); V = U;
+            Uarry = {}; Sarry = {}; Karry = {}; Varry = {};
 
-            %convert these into equations on dual variables 
-            if (self.K.f > 0)
-                Deq = A(:,1:self.K.f)';
-                feq = c(1:self.K.f);
-                feq = feq(:);
-                c = c(self.K.f+1:end);
-                K.f = 0;
-                A = A(:,self.K.f+1:end);
-            end
-
-            Scellarray= [];
             while (1)
-                [success,A,c,K,Deq,feq,S] = feval(procReduce,A,c,K,Deq,feq);
-                [Deq,feq] = cleanLinear(Deq,feq);
-                Scellarray{end+1} = S;
+                
+                [success,U,V,Kface,S] = procReduce(self,U,V,self.cone,Kface);
+                if (success)
+                    Uarry{end+1} = U;
+                    Sarry{end+1} = S;
+                    Varry{end+1} = V;
+                    Karry{end+1} = Kface;
+                end
+
                 if success == 0
                     break;
                 end
+                
             end
 
-            %convert linear constraints into free variables
-            A = [Deq',A];
-            c = [feq;c(:)]; 
-            K.f = K.f + length(feq);
-            prg = reducedDualPrg(A,b,c,K,[],Scellarray,'dual');
+            prg = reducedDualPrg(A,b,c,self.K,Karry,Uarry,Varry,Sarry);
 
         end
+        
     end
 
 end

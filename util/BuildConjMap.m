@@ -14,11 +14,6 @@ function T =  BuildConjMap(U1,U2)
     [r1,~] = size(U1);
     [r2,c2] = size(U2);
     
-    if (r1 ~= r2)
-        error('num_rows(arg1) must equal num_rows(arg2)');
-    end
-  
-    
     %compute T for which Tq(:) = [U1 q U2']' (:)      
     T1 = kron(speye(c2),U1);    %linear map of q(:) to (U1*q)(:)
     T2 = transpose(r1,c2);      %linear map of (U1q)(:) to (U1q)'(:)
@@ -28,7 +23,7 @@ function T =  BuildConjMap(U1,U2)
 
     %compute tranpose unless we flipped U1 and U2 
     if (tranposeMap == 1)
-        T = transpose(r1,r2)*T;
+        T = transpose(r2,r1)*T;
     end
     
 end

@@ -154,6 +154,43 @@ classdef SolUtil
                 pass = isempty(x);
             end
         end
+        
+        
+        function pass = CheckInFace(x,U,K,eps)
+            
+            cone = ConeBase(K);
+             Kf = K;
+            if (~isempty(U))
+                Tuu = cone.BuildMultMap(U,U);
+                xface = Tuu*x(:);
+                Kf.s = cellfun(@(x) size(x,2), U);
+            else
+                xface = x(:);
+            end
+                 
+            face = ConeBase(Kf);
+            
+            for i=1:length(Kf.s)
+                [s,e] = face.GetIndx('s',i);
+
+                xtest = mat(xface(s:e));
+                if issparse(xtest)
+                   eigf = @eigs;
+                else
+                   eigf = @eig; 
+                end
+                if (min(eigf(xtest)) > -eps) 
+                    pass = 1;
+                else
+                    pass = isempty(xtest);
+                end
+            
+            end
+            
+        end
+        
+        
+        
 
         function U = ExpandU(U)
             for i=2:length(U) 

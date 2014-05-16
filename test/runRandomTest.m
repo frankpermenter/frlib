@@ -1,8 +1,8 @@
 function runRandomTest
 
     pass = [];
-    K.s =  10;
-    rankS = floor(2*rand(1))+2;
+    K.s =  3;
+    rankS = 1;%floor(2*rand(1))+2;
     numEq = floor(2*rand(1))+2;
     eps = 10^-8;
 
@@ -17,9 +17,9 @@ function runRandomTest
         error('Test failed!');
     end
 
-    numEq = 45;
+    numEq = 4;
     [A,b,c,S] = RandomDualTestPSDCase(K,numEq,rankS,1);
-    fr = frlibPrg(A,b*0,c,K);
+    fr = frlibPrg(A,b,c,K);
     frRed = fr.ReduceDual('d');
     pass = [pass;CheckDualTest(fr,frRed,S,rankS,eps)];
 
@@ -69,18 +69,18 @@ function [A,b,c,S] = RandomDualTestPSDCase(K,numEq,rankS,numIter)
     
     V = nullqr(S);
     
-    Z = coneHelp(zeros(0,length(S(:))),[],zeros(1,length(S(:))),K);
+    Z = ConeBase(K);
     Stemp = S(:)';    
     Stemp(Z.indxDiag{1}) = Stemp(Z.indxDiag{1})/2;
-    Stemp = Z.upperTri(Stemp);
+    Stemp = Z.UpperTri(Stemp);
     Snull = null(Stemp);
 
     for (i=1:numEq+1)
         
         Sperp = Snull*randn(size(Snull,2),1);
         temp = zeros(K.s,K.s);
-        temp(Z.upperTriIndx) = Sperp;
-        temp(Z.lowerTriIndx) = Sperp;
+        temp(Z.UpperTriIndx()) = Sperp;
+        temp(Z.LowerTriIndx()) = Sperp;
 
         if (i<numEq+1)
             A(i,:) = temp(:)';
@@ -99,15 +99,16 @@ function pass = CheckDualTest(frOrig,frRed,S,rankS,eps)
     [~,yorig,infoOrig] = frOrig.Solve();
 
     pass = frRed.K.s+rankS == frOrig.K.s;
-
+    pass = [pass;norm( frOrig.b(:)'*y-frOrig.b(:)'*yorig) < eps];
+    
     if (info.pinf == 1 || info.dinf == 1)
         pass = [pass;infoOrig.pinf == info.pinf];
         pass = [pass;infoOrig.dinf == info.dinf];
-    else
-        display('checking')      
-        pass = [pass,frOrig.CheckDual(y)];
-        pass = [pass,CheckRedCert(mat(frOrig.c(:)-frOrig.A'*yorig),S,eps)];
+    else 
+        pass = [pass;frOrig.CheckDual(y,eps)];
+        pass = [pass;CheckRedCert(mat(frOrig.c(:)-frOrig.A'*yorig),S,eps)];
     end
+    
     if (all(pass) ~= 1)
         xerror('fail');
     end
@@ -129,7 +130,7 @@ function pass = CheckPrimalTest(frOrig,frRed,S,rankS,eps)
     else
         display('checking')
         xRecover = frRed.RecoverPrimal(x);
-        pass = frOrig.CheckPrimal(xRecover);
+        pass = frOrig.CheckPrimal(xRecover,eps);
         pass = [pass,CheckRedCert(xOrig,S,eps)];
     end
     if (all(pass) ~= 1)

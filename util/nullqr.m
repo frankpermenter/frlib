@@ -1,9 +1,8 @@
-function [ns,U] = nullqr(A)
+function [nullA,rangeAt] = nullqr(A)
 
     n = size(A,1);
-    [q,r,e] = qr(A');
+    [q,r,e] = qr(A',0);
    
-
     %find vectors not in span of A'
     p = find( abs(diag(r)) < 10^-8);
     if ~isempty(p)
@@ -12,7 +11,10 @@ function [ns,U] = nullqr(A)
         indxNull = n+1:size(q,2);
     end
 
-    ns = q(:,indxNull);
+    nullA = q(:,indxNull);
+    Atperm = A(e,:)';
+    rangeAt = Atperm(:,setdiff(1:n,indxNull));
+   
 
 
 

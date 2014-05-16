@@ -11,7 +11,7 @@ function pass = runHorn
         x = pred.RecoverPrimal(x);
   
         load(['hornD',num2str(i),'.mat']);
-        d = frlibPrg(A,[],c,K);
+        d = frlibPrg(A,[],c(:),K);
         dred = d.ReduceDual('dd');
         [~,y] = dred.Solve();
 
