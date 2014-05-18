@@ -11,33 +11,25 @@ classdef ConeApprox < ConeBase
 
         function mats = matsFromSubMat(self,U)
 
-            mats =[];
+            carry = []; rarry = [];varry =[];
             for i=1:length(self.K.s)
-                [mats] = [mats;self.matsFromSubMat_i(U,i)];
+                [r,c,v] = find(self.matsFromSubMat_i(U,i));
+                rarry = [rarry;r];
+                carry = [carry;c];
+                varry = [varry;v];
             end
+
+            mats = sparse(rarry,carry,varry,max(rarry),self.NumVar);
 
         end
 
         function extR = extRaysDD(self)
 
-            v1 = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
-            v2 = sparse(0,self.NumVar);
-            for i=1:length(self.K.q)
-                N = self.K.q;
-                if (N > 0)
-                    vq1 = [ones(N-1,1),speye(N-1)];
-                    vq2 = [ones(N-1,1),-speye(N-1)];
-                    [s,e] = self.GetIndx('q',i);
-                    v2(end+1:end+2*N-2,s:e) = [vq1;vq2];
-                end
-            end
-
             v1 = self.matsFromSubMat([1]);
-            v2 = [];
-            v3 = self.matsFromSubMat([1,-1;-1,1]);
-            v4 = self.matsFromSubMat([1,1;1,1]);
+            v2 = self.matsFromSubMat([1,-1;-1,1]);
+            v3 = self.matsFromSubMat([1,1;1,1]);
 
-            extR = [v1;v2;v3;v4];
+            extR = [v1;v2;v3;];
 
         end
 
@@ -62,7 +54,6 @@ classdef ConeApprox < ConeBase
             if n < k
                 A = []; return
             end
-
 
             posArray = nchoosek(1:n,k);
             numSubMat = size(posArray,1);
