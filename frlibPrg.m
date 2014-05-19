@@ -9,19 +9,17 @@ classdef frlibPrg
 
     properties(GetAccess=protected)
         cone
+        defaultSolveOpts
     end
 
     methods
 
-       
         function self = frlibPrg(A,b,c,K)
-
-            
+          
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
  
-            
             self.cone = ConeBase(K); 
              
             if  isempty(b)
@@ -39,26 +37,26 @@ classdef frlibPrg
             if length(b) ~= size(A,1)
                 error(['Number of rows of A do not match length of b. Num rows: ',num2str(size(A,1)),', Length b: ', num2str(length(b))]);
             end
-            
-            
+             
             if self.cone.NumVar ~= length(c)
                 error(['Number of variables do not match length of c. Num vars: ',num2str(self.cone.NumVar),', Length c: ', num2str(length(c))]);
             end
           
-           
-            [A,c] = makeSymmetric(A,c(:)',K);  
-            
+            A = self.cone.Symmetrize(A); 
+            c = self.cone.Symmetrize(c(:)'); 
+
             self.A = A;
             self.c = c;
             self.b = b;
             self.K = self.cone.K;
-            
+            self.defaultSolveOpts = [];
+
         end
 
         function [x,y,info] = Solve(self,opts)
             
             if ~exist('opts','var')
-                opts = [];
+                opts = self.defaultSolveOpts;
             end
             
             if isfield(opts,'useQR')
@@ -67,12 +65,47 @@ classdef frlibPrg
                 useQR = 0;
             end
             
-            [A,b,T] = cleanLinear(self.A,self.b,useQR); 
-            [x,y,info] = sedumi(A,b,self.c,self.K);
-            y = T*y;
+            if isfield(opts,'removeDualEq')
+                removeDualEq = opts.removeDualEq;
+            else
+                removeDualEq = 0;
+            end
+            
+            [A,b,Ty1] = cleanLinear(self.A,self.b,useQR); 
+            y0 = 0;
+
+            if removeDualEq
+                [A,b,c,K,Ty2,y0] = RemoveDualEquations(A,b,self.c,self.K);
+                y0 = Ty1*y0;
+                Ty = Ty1*Ty2; 
+            else
+                c = self.c;
+                K = self.K;
+                Ty = Ty1;
+            end
+            
+            if size(A,1) ~= 0
+                [x,y,info] = sedumi(A,b,c,K);
+                y = Ty*y + y0;
+            else
+                x = sparse(size(A,2),1); y = 0;
+                y = y0;
+            end
+
+            if removeDualEq
+                indxNotFree = (self.K.f+1):size(self.A,2);
+                indxFree = 1:self.K.f;
+                costNotFree = self.c(indxNotFree);
+                costError = (c(:)-costNotFree(:))'*x;
+                eqError = self.b-self.A(:,indxNotFree)*x;
+
+                xf = [self.A(:,indxFree);self.c(indxFree)]\[eqError;costError];
+                x = [xf;x];
+            end
+
+            
 
         end
-
 
         function [y] = SolveDual(self)
 
@@ -80,16 +113,10 @@ classdef frlibPrg
 
             if (self.K.f > 0) 
 
-                [s,e] = self.cone.GetIndx('f',1);
-                Af = self.A(:,s:e);
-                cf = self.c(s:e);
-
-
                 [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K);
                 [~,yReduced] = sedumi(Ar,br,cr,Kr);
                 
                 y = Tr*yReduced+y0;
-
 
             else
                 [x,y,info] = sedumi(A,b,self.c,self.K);
@@ -99,22 +126,6 @@ classdef frlibPrg
 
         end
 
-       function [x] = SolvePrimal(self)
-
-            [A,b] = cleanLinear(self.A,self.b); 
-            
-            [x0,varsPresolved,tRemoveVars,tAddVars,AReduced,bReduced] = PreSolveLinearEq(A,b);
-            cReduced = tRemoveVars*self.c(:);
-      
-            [x,~] = sedumi(AReduced,bReduced,cReduced,self.K);
-
-            x = tAddVars*x;
-            x(varsPresolved) = x0;
-
-       end
-
-
-       
         function [x,y] = SolveMosek(self)
                 
             [A,b,T] = cleanLinear(self.A,self.b); 
@@ -152,45 +163,16 @@ classdef frlibPrg
             y = T*(Tr*y+y0);
             
         end 
-       
-       
-       
-        function [x,y,info] = SolveMosek2(self)
-
-            A = self.cone.Desymmetrize(self.A);
-            c = self.cone.Desymmetrize(self.c(:)');
-            info = [];
-
-            K = self.K;
-            if ~isfield(K,'f') 
-                K.f = 0;
-            end
-
-            if ~isfield(K,'l') 
-                K.l = 0;
-            end
-
-            if ~isfield(K,'q') || all(K.q == 0)
-                K.q = [];
-            end
-
-            if ~isfield(K,'s') || all(K.s == 0)
-               K.s = [];
-            else
-               K.s = K.s(K.s ~= 0); 
-            end
-
-            if ~isfield(K,'r') || all(K.r == 0)
-                K.r = [];
-            end
-
-            [x,y] = spot_mosek(A,self.b,c(:),K,struct('verbose',1));
-
+      
+        function pass = CheckSolution(self,x,y,eps)
+           pass = 1;
+           pass = pass & self.CheckPrimal(x,eps);
+           pass = pass & self.CheckDual(y,eps);
+           pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
         end
-        
+
         function pass = CheckPrimal(self,x,eps)
            pass = SolUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
-           
         end
         
         function pass = CheckDual(self,y,eps)
@@ -199,11 +181,6 @@ classdef frlibPrg
 
         function [prg] = ReducePrimal(self,method)
             
-            method = lower(method); 
-            if (strcmp(method,'sdd'))
-                procReduce = @facialRed.SDDPrimIter;
-            end
-
             if (strcmp(method,'d'))
                 procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'d',cone,Kface);
             end
@@ -236,11 +213,6 @@ classdef frlibPrg
         end
 
         function [prg] = ReduceDual(self,method)
-
-            method = lower(method); 
-            if (strcmp(method,'sdd'))
-                procReduce = @facialRed.SDDDualIter;
-            end
 
             if (strcmp(method,'d'))
                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
