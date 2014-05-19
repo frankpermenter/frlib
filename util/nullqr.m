@@ -1,10 +1,11 @@
 function [nullA,rangeAt] = nullqr(A)
 
     n = size(A,1);
-    [q,r,e] = qr(A',0);
-   
+    [q,r,e] = qr(A');
+    [e,~] = find(e);
+
     %find vectors not in span of A'
-    p = find( abs(diag(r)) < 10^-8);
+    p = find(abs(diag(r)) < 10^-8);
     if ~isempty(p)
         indxNull = min(p):size(q,2);
     else
