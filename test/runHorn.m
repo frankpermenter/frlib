@@ -15,7 +15,7 @@ function pass = runHorn
         dred = d.ReduceDual('dd');
         [~,y] = dred.Solve();
 
-        eps = 10^-8;
+        eps = 10^-5;
         pass(end+1) = all(dred.K.s == pred.K.s) & d.CheckDual(y,eps) ...
             & p.CheckPrimal(x,eps);
         
