@@ -66,7 +66,10 @@ classdef reducedDualPrg < frlibPrg
             self.Korig = K;
             self.solMap = solMap;
             self.noReductions = noReductions;
-            
+
+            opts.removeDualEq = 1;
+            self.defaultSolveOpts = opts;
+
         end
 
         function [xr,x0] = RecoverRamana(self,x,eps)
