@@ -162,7 +162,8 @@ classdef ConeBase
 
         end
 
-        function A =  symmetrize(self,A)
+
+        function A =  Symmetrize(self,A)
 
             indxL = self.LowerTriIndx();
             indxU = self.UpperTriIndx();
@@ -204,9 +205,6 @@ classdef ConeBase
             A(:,self.LowerTriIndx()) = temp;
 
         end
-        
-        
-
 
         function A = flqrCols(self,A)
 
@@ -223,8 +221,6 @@ classdef ConeBase
             
         end
         
-        
-
         function [startPos,endPos]= GetIndx(self,cone,num)
 
             startPos = getfield(self.Kstart,cone);
@@ -471,10 +467,6 @@ classdef ConeBase
             
         end
         
-        
-        
-
-
 end
 
 
