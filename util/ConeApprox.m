@@ -13,7 +13,11 @@ classdef ConeApprox < ConeBase
 
             carry = []; rarry = [];varry =[];
             for i=1:length(self.K.s)
-                [r,c,v] = find(self.matsFromSubMat_i(U,i));
+                if (all(size(U) == 2))
+                    [r,c,v] = find(self.matsFromSubMat2x2_i(U,i));
+                else
+                    [r,c,v] = find(self.matsFromSubMat_i(U,i));
+                end
                 rarry = [rarry;r];
                 carry = [carry;c];
                 varry = [varry;v];
@@ -25,7 +29,7 @@ classdef ConeApprox < ConeBase
 
         function extR = extRaysDD(self)
 
-            v1 = self.matsFromSubMat([1]);
+            v1 = self.extRaysD();
             v2 = self.matsFromSubMat([1,-1;-1,1]);
             v3 = self.matsFromSubMat([1,1;1,1]);
 
@@ -34,13 +38,49 @@ classdef ConeApprox < ConeBase
         end
 
         function extR = extRaysD(self)
-            %extR = sparse(1:length(self.indxNNeg),self.indxNNeg,1,length(self.indxNNeg),self.NumVar);
             indxDiag = cell2mat(self.indxDiag);
             extR = sparse(1:length(indxDiag),indxDiag,1,length(indxDiag),self.NumVar);
-            %extR = self.matsFromSubMat([1]);
         end
         
-        
+        function A =  matsFromSubMat2x2_i(self,V,num)
+
+            if isempty(self.K.s)
+               A = [];
+               return
+            end        
+
+            n = self.K.s(num);
+            k = size(V,2);
+
+            if (k ~= 2)
+                error('submat must be 2x2')
+            end
+
+            if n < k
+                A = []; return
+            end
+
+            offset = self.Kstart.s(num)-1;
+            groupings = nchoosek(1:n,k);
+            numSubMats = size(groupings,1);
+            sizeSubMat = size(V,1);
+
+            blk11 = sub2ind([n,n],groupings(:,1),groupings(:,1));
+            blk12 = sub2ind([n,n],groupings(:,1),groupings(:,2));
+            blk22 = sub2ind([n,n],groupings(:,2),groupings(:,2));
+            blk21 = sub2ind([n,n],groupings(:,2),groupings(:,1));
+
+            Vrep = repmat(V(:)',numSubMats,1)';
+            
+            colIndx = [blk11,blk12,blk21,blk22]';
+            colIndx = colIndx(:)';
+            rowIndx = repmat(1:numSubMats,sizeSubMat*sizeSubMat,1);
+            rowIndx = rowIndx(:)';
+
+            A = sparse(rowIndx,colIndx+offset,Vrep(:));
+
+        end
+
         function A = matsFromSubMat_i(self,V,num)
 
             if isempty(self.K.s)
