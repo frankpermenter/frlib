@@ -2,69 +2,17 @@ classdef facialRed
 
     methods(Static)
 
-        function [x,numErr,infeas] = solveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
-
-            gurobiExists = 0; ~isempty(which('gurobi'));
-           % glpkExists = ~isempty(which('glpk'));
-            sedumiExists = 0; ~isempty(which('sedumi'));
-
-            numErr = 0;
-            infeas = 0;
-            if (gurobiExists)
-
-                model.A = sparse([Aineq;Aeq]);
-                model.obj = full(c);
-                model.rhs = full([bineq;beq]);
-                model.lb = full(lbnd);
-                model.ub = full(ubnd);
-                model.sense = char( ['<'*ones(length(bineq),1);'='*ones(length(beq),1)]);
-
-             %   params.method = 1;
-              %  params.crossover = 0;
-              %  params.outputflag = 0;
-                result = gurobi(model,params);
-                flag = result.status;
-
-                if (strcmp(flag,'INFEASIBLE'))
-                    infeas = 1;
-                    x = [];
-                    return;
-                else
-                    x = result.x;
-                end
-
-                return
-            end
-
-            %if (glpkExists)
-               %x = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-            %   return
-            %end
-
-            if (sedumiExists)
-                [x,infeas,numErr] = solveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-                return;
-            else
-                [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-                infeas = infeas == -2 | infeas == -5;
-                numErr = ~infeas && flag ~= 1;
-            end
-
-        end
-
         function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = BuildDualLP(A,c,U,V,W,cone)
 
             numGens = size(W,1);
             numEq = size(A,1)+1;
-           
-            
+
             if numGens == 0
                 error('No generators specified. size(W,1) = 0')
             end
 
             if ~all(cellfun(@isempty,U))
                 
-               
                 Tuu = cone.BuildMultMap(U,U);
                 Tuv = cone.BuildMultMap(U,V);
                 Tvv = cone.BuildMultMap(V,V);
@@ -151,9 +99,9 @@ classdef facialRed
 
         end
 
-    function [success,U,Kface,redCert] = PolyhedralPrimIter(self,U,gensOrType,cone,Kface)
+        function [success,U,Kface,redCert] = PolyhedralPrimIter(self,U,gensOrType,cone,Kface)
 
-            W = [];  redCert = [];
+            redCert = [];
             if ischar(gensOrType)
                 W = facialRed.GetGenerators(Kface,gensOrType);
             else
@@ -168,7 +116,7 @@ classdef facialRed
             end
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildPrimLP(self.A,self.b,U,W,cone,Kface);
-            [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             
             success = numerr == 0 & infeas == 0 & -cost'*x > .1;
 
@@ -190,38 +138,11 @@ classdef facialRed
 
         end
 
-        function W = GetGenerators(Kface,type)
-            
-            Z = ConeApprox(Kface);
-                
-            switch type
-
-                case 'd'
-                     W = Z.extRaysD();
-
-                case 'dd'
-                     W = Z.extRaysDD();
-
-            end
-
-        end
-
         function [success,U,V,Kface,redCert,solMap] = PolyhedralDualIter(self,U,V,gensOrType,cone,Kface)
 
-            W = []; redCert = [];
+            W = [];  redCert = [];
             if ischar(gensOrType)
-                Z = ConeApprox(Kface);
-                
-                switch gensOrType
-                    
-                    case 'd'
-                         W = Z.extRaysD();
-                         
-                    case 'dd'
-                         W = Z.extRaysDD();
-                    
-                end
-                
+                W = facialRed.GetGenerators(Kface,gensOrType);
             else
                 W = gensOrType;
             end
@@ -233,25 +154,11 @@ classdef facialRed
                 return;
             end
             
-
-            
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildDualLP(self.A,self.c,U,V,W,cone);
-          
-                        
-           % if gensOrType == 'd' &&  all(cellfun(@isempty,U))   
-                
-                %indxDiag = cell2mat(cone.indxDiag); 
-                %temp = [self.A;self.c(:)'];
-                %x = all(temp(:,indxDiag)==0,1)';
-               % success = nnz(x) > 0;
-                
-           % else
-           %     return
-                [x,numerr,infeas] = facialRed.solveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-                success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
-                
-          %  end
-            
+         
+            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
+                   
             if success
 
                 x = sparse(x);
@@ -270,32 +177,11 @@ classdef facialRed
                     redCert = sBar;
                 end
                 
-                [U,V,Kface] = facialRed.ReduceDual(sBarExtRay,U,V,Kface);
+                [U,V,Kface] = facialRed.Reduce(sBarExtRay,U,V,Kface);
                 
             end
 
         end
-
-        function [U,V,K] = ReduceDual(SblkDiag,U,V,Kface)
-            
-            K = Kface;
-            Z = ConeBase(Kface);
-            for i = 1:length(Kface.s)
-                [s,e] = Z.GetIndx('s',i);
-                S = mat(SblkDiag(s:e));
-                [B,rangeS] = nullqr(S);
-                if (~isempty(U{i}))
-                    V{i} = [V{i},U{i} * rangeS];
-                    U{i} = U{i} * B; 
-                else
-                    V{i} = rangeS;
-                    U{i} = B;  
-                end
-                K.s(i) = size(U{i},2); 
-            end
-
-        end
-
 
         function [U,V,K] = Reduce(SblkDiag,U,V,Kface)
             
@@ -322,149 +208,18 @@ classdef facialRed
 
         end
 
-
-        function [A,c,K,T] = ReducePrimal(Z,SblkDiag)
-
-            A = Z.flqrCols(Z.A);
-            c = Z.flqrCols(Z.c(:)');
-
-            K = Z.K;
-            T = [];
-
-            As = [];
-            cs = [];
-
-            for i = 1:length(K.s)
-
-                [s,e] = Z.GetIndx('s',i);
-                S = mat(SblkDiag(s:e));
-
-                if ( any( eig(S) <= -10^-12))
-                    error('S must be PSD');
-                end
-
-                if any(any(abs(S-S')) > 10^-12)
-                    error('S must be symmetric');
-                end
-
-                U = nullqr(S);
-                if (K.s(i) > 0)
-                    K.s(i) = size(U,2);
-                    As = [As,Z.ConjA(U,i)];
-                    cs = [cs(:)',Z.ConjC(U,i)];
-                end
-                T{i} = U;
+        function W = GetGenerators(Kface,type)
+            
+            Z = ConeApprox(Kface);
                 
-            end
+            switch type
 
-            A = [A, As];
-            c = [c, cs];
+                case 'd'
+                     W = Z.extRaysD();
 
-        end
+                case 'dd'
+                     W = Z.extRaysDD();
 
-
-        function [success,A,c,K,T] = SDDPrimIter(A,b,c,K)
-
-            T = [];
-            Z = coneHelp(A,b,c,K);
-            prg = spotsosprg;
-            m = size(Z.A,1);
-            tr = 0;
-
-            [prg,u] = prg.newFree(m);
-            prg = prg.withEqs(u'*Z.b);
-
-            for i=1:length(K.s)
-                if (K.s(i) > 1 )
-                    [prg,Stemp] = prg.newSDD(K.s(i));
-                    S2 = mat(Z.AdjA(u,i));
-                    S{i} = S2;
-                    prg = prg.withEqs(Stemp-S2);
-                    tr = tr + trace(Stemp);
-                end
-            end
-
-            prg = prg.withEqs(tr-1);
-
-            try
-                sol = prg.optimize();
-                success = sol.info.pinf == 0 & sol.info.numerr == 0;
-            catch
-                success = 0;
-            end
-
-            S =[];
-            if success
-                for i=1:length(S)
-                    Sn = sol.eval(S{i});
-                    S = [S,Sn(:)']
-                end
-                [A,c,K,T] = facialRed.ReducePrimal(Z,S);
-            end
-
-        end
-
-
-        function [Deq,feq,A,c] = ReduceLorentzDual(S,A,c)
-
-            S = S(:);
-            c = c(:);
-            S = S/S(1);
-
-            if norm(S(2:end)) < 1
-                %c-A'y = 0
-                Deq = A';
-                feq = c;
-                A = []; c = [];
-            else
-
-                sPerp = [1;-S(2:end)]
-                N = length(c);
-
-                norm_sPerpSqr = sum(sPerp.*sPerp);
-
-                % (c-A'y) must be parallel to sPerp
-                % (c-A'y) - P(c-A'y) = 0
-               
-                Deq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*A';
-                feq = (eye(N) - sPerp/norm_sPerpSqr*sPerp')*c;
-
-                %c(1) \ge A(:,1)'*y
-                A = A(:,1);
-                c = c(1);
-
-            end
-        end
-
-        function [success,A,c,K,Deq,feq] = SDDDualIter(A,c,K,Deq,feq)
-
-            Z = coneHelp(A,[],c,K);
-            prg = spotsosprg;
-
-            tr = 0;
-            SdotM = 0;
-            Cdot = 0;
-
-            for i=1:length(K.s)
-                [prg,Stemp] = prg.newSDD(K.s(i));
-                S{i} = Stemp;
-                SdotM = SdotM + Z.AdotX(Stemp,i);
-                SdotC = SdotC + Z.CdotX(Stemp,i);
-                tr = tr + trace(Stemp);
-            end
-            [prg,lam]  = prg.newFree(length(feq));
-            prg = prg.withEqs(SdotM+Deq'*lam);
-            prg = prg.withEqs(SdotC+Deq'*lam);
-            prg = prg.withEqs(tr-1);
-            try
-                sol = prg.optimize();
-                success = sol.info.pinf == 0;
-            catch
-                success = 0;
-            end
-
-            if success
-                [A,c,K,Deq,feq] = facialRed.ReduceDual(Z,S);
             end
 
         end
