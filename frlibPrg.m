@@ -99,11 +99,9 @@ classdef frlibPrg
                 costError = (c(:)-costNotFree(:))'*x;
                 eqError = self.b-self.A(:,indxNotFree)*x;
 
-                xf = [self.A(:,indxFree);self.c(indxFree)]\[eqError;costError];
+                xf = lsol([self.A(:,indxFree);self.c(indxFree)],[eqError;costError]);
                 x = [xf;x];
             end
-
-            
 
         end
 
