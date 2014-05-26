@@ -4,8 +4,9 @@ function [A,b,c,K,T,y0] = RemoveDualEquations(A,b,c,K)
     [s,e] = Z.GetIndx('f',1);
     
     if (isempty(s))
-       T = []; 
-       y0 = [];
+       numVar = size(A,1);
+       T = speye(numVar);
+       y0 = sparse(numVar,1);
        return
     end
     
