@@ -74,7 +74,7 @@ classdef frlibPrg
             [A,b,Ty1] = cleanLinear(self.A,self.b,useQR); 
             y0 = 0;
 
-            if removeDualEq
+            if removeDualEq & self.K.f > 0
                 [A,b,c,K,Ty2,y0] = RemoveDualEquations(A,b,self.c,self.K);
                 y0 = Ty1*y0;
                 Ty = Ty1*Ty2; 
