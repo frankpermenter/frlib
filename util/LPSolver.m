@@ -2,24 +2,37 @@ classdef LPSolver
 
     methods(Static)
 
-        function [x,numErr,infeas] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function solverHandle = GetSolver
 
-            gurobiExists = 0; ~isempty(which('gurobi'));
-            sedumiExists = 0; ~isempty(which('sedumi'));
+            solverExists = []; solverMethod = {};
 
-            numErr = 1;
-            infeas = 1;
-            if (gurobiExists)
-                [x,infeas,numErr] = LPSolver.SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-                return
+            solverExists(end+1) = ~isempty(which('linprog'));
+            solverMethod{end+1} = @LPSolver.SolveLPMosek;  
+
+            solverExists(end+1) = ~isempty(which('gurobi'));
+            solverMethod{end+1} = @LPSolver.SolveLPGurobi;  
+
+            solverExists(end+1) = ~isempty(which('sedumi'));
+            solverMethod{end+1} = @LPSolver.SolveLPSedumi;  
+
+            for i=1:length(solverExists)
+                if solverExists(i)
+                    solverHandle = solverMethod{i};
+                    return 
+                end
             end
 
-            if (sedumiExists)
-                [x,infeas,numErr] = LPSolver.SolveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-                return;
+            solverHandle = []
+
+        end
+
+        function [x,numErr,infeas] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+
+            solverHandle = LPSolver.GetSolver();
+            if isempty(solverHandle) 
+                error('No solvers found!')
             else
-                %calls mosek if in path
-                [x,numErr,infeas] = LPSolver.SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+                [x,infeas,numErr] = solverHandle(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             end
 
         end
@@ -84,7 +97,7 @@ classdef LPSolver
             try
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             catch
-                [A,b] = cleanLinear(A,b);
+                [A,b] = cleanLinear(A,b,1);
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             end
             x = sparse( xopt(1:N,1));
