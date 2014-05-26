@@ -11,10 +11,8 @@ function [A,b,c,K,T,y0] = RemoveDualEquations(A,b,c,K)
     
     Deq = A(:,s:e)';
     feq =  c(s:e);
-    
-    
-    y0 = Deq \ feq(:);
-    T = nullqr(Deq);
+     
+    [y0,T] = lsol(Deq,feq(:));
     
     Anew = T'*A;
     Cnew = c(:) - A'*y0;
