@@ -37,15 +37,16 @@ classdef LPSolver
 
         end
 
-        function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+        function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             %calls mosek if in path
             [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             infeas = flag == -2 | flag == -5;
             numErr = ~infeas && flag ~= 1;
         end
 
-        function [x,infeas,numErr] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+        function [x,infeas,numErr] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
+            infeas = 1; numErr = 1;
             model.A = sparse([Aineq;Aeq]);
             model.obj = full(c);
             model.rhs = full([bineq;beq]);
@@ -53,15 +54,22 @@ classdef LPSolver
             model.ub = full(ubnd);
             model.sense = char( ['<'*ones(length(bineq),1);'='*ones(length(beq),1)]);
 
+            params.method = 1;
+            params.crossover = 0;
+            params.outputflag = 0;
             result = gurobi(model,params);
             flag = result.status;
 
             if (strcmp(flag,'INFEASIBLE'))
                 infeas = 1;
+                numErr = 0;
                 x = [];
-                return;
-            else
-                x = result.x;
+            else 
+                if (strcmp(flag,'OPTIMAL'))
+                    x = result.x;
+                    infeas = 0;
+                    numErr = 0;
+                end
             end
 
         end
