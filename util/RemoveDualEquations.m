@@ -4,8 +4,8 @@ function [A,b,c,K,T,y0] = RemoveDualEquations(A,b,c,K)
     [s,e] = Z.GetIndx('f',1);
     
     if (isempty(s))
-       T = eye(size(A,1)); 
-       y0 = 0;
+       T = []; 
+       y0 = [];
        return
     end
     
