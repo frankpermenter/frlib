@@ -3,7 +3,7 @@ for a lower dimensional face of the PSD cone containing the feasible set. If the
 over this face.  This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite
 constraint the reformulation will contain a single dxd constraint with d < n.
   
-To find a face efficiently, the code employs approximations of the PSD cone. Better approximations can lead to smaller reformulations at the cost of more computation.  Approximations currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.  This approximations are polyhedral,
+To find a face efficiently, the code employs approximations of the PSD cone. Better approximations can lead to smaller reformulations at the cost of more computation.  Approximations currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.  These approximations are polyhedral
 and hence allow one to search for a face using linear programming.
 
 The code takes as input a primal-dual SDP pair expressed in SeDuMi formatted inputs A,b,c,K:
