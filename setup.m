@@ -1,15 +1,14 @@
 function setup()
+
     %Checking dependencies
     sedumiExists = ~isempty(which('sedumi'));
-    gurobiExists = ~isempty(which('gurobi'));
-
     display('Checking dependencies...')
     if ~sedumiExists
-        error('Cannot find sedumi. Aborting...')
+        error('Cannot find SeDuMi. Aborting...')
     end
 
-    if ~gurobiExists
-        warning('Gurobi not detected. Install Gurobi for faster results.')
+    if (isempty(LPSolver.GetSolver()))
+       error('No LP solver found. Add linprog, Gurobi, SeDuMi, or Mosek to path.') 
     end
 
     display('Updating path...')
@@ -18,4 +17,4 @@ function setup()
     addpath(pwd)
 
     display('Done!')
-    display('Type runTests to check installation')
+    display('Type runTests to check installation.')
