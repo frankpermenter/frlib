@@ -22,7 +22,7 @@ classdef LPSolver
                 end
             end
 
-            solverHandle = []
+            solverHandle = [];
 
         end
 
