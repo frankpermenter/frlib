@@ -1,4 +1,4 @@
-This repo contains matlab code for pre-processing SDPs.  Given an SDP that fails Slater''s condition, the code searches
+This repo contains matlab code for pre-processing SDPs.  Given an SDP that fails Slater's condition, the code searches
 for a lower dimensional face of the PSD cone containing the feasible set. If the search succeeds, the code reformulates the SDP explicitly
 over this face.  This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite
 constraint the reformulation will contain a single dxd constraint with d < n.
