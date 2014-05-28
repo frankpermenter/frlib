@@ -1,33 +1,36 @@
-frlib is matlab code for partial SDP facial reduction.  It cheaply converts an SDP with no strictly
-feasible solution into a smaller, equivalent SDP using inner approximations of the PSD cone.  Better
-inner approximations lead to more reductions at the cost of more computation.  Inner approximations
-currently supported include non-negative diagonal matrices and PSD diagonally dominant matrices.
+This repo contains matlab code for pre-processing SDPs.  Given an SDP that fails Slater''s condition, the code searches
+for a lower dimensional face of the PSD cone containing the feasible set. If the search succeeds, the code reformulates the SDP explicitly
+over this face.  This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite
+constraint the reformulation will contain a single dxd constraint with d < n.
+  
+To find a face efficiently, the code employs approximations of the PSD cone. Better approximations can lead to smaller reformulations at the cost of more computation.  Approximations currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.  This approximations are polyhedral,
+and hence allow one to search for a face using linear programming.
 
-To reduce an SDP expressed in terms of SeDuMi formatted inputs A,b,c,K, first call:
-
+The code takes as input a primal-dual SDP pair expressed in SeDuMi formatted inputs A,b,c,K:
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 ```
+The primal and/or the dual may fail Slater''s condition. You can choose which problem to reformulate (primal or dual).  
 
-To reduce the dual using diagonally dominant ('dd') or diagonal ('d') inner approximations, issue a call
+To reformulate the dual using non-negative diagonal approximations ('d') or diagonally-dominant ('dd') approximations, issue a call
 of the form:
 
 ```Matlab
-prgR = prg.ReduceDual('dd');
+prgR = prg.ReduceDual('d');
 ```
-To solve the reduced SDP, call:
+To solve the reformulated SDP, call:
 ```Matlab
 [~,y] = prgR.Solve();
 ```
-The solution y solves the dual of the unreduced SDP.  
+The solution y solves the original dual SDP.  
 
-To reduce the primal, call
+To simplify the primal, call
 ```Matlab
-prgR = prg.ReducePrimal('dd');
+prgR = prg.ReducePrimal('d');
 ```
-To recover a solution x0 to the unreduced primal problem call
+To recover a solution x to the original primal SDP call
 ```Matlab
-[xFr] = prgR.Solve();
-x0 = prgR.RecoverPrimal(xFr);
+[xR] = prgR.Solve();
+x = prgR.RecoverPrimal(xR);
 ```
 
