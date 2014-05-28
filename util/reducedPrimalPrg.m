@@ -6,7 +6,6 @@ classdef reducedPrimalPrg < frlibPrg
         Varry
         Sarry
         Karry
-        solMap
         Aorig
         corig
         Korig
@@ -18,7 +17,7 @@ classdef reducedPrimalPrg < frlibPrg
 
         
         function self = reducedPrimalPrg(A,b,c,K,Karry,U,S)
-
+         
             if (length(U) > 0)
                 
                 cone = ConeBase(K);
@@ -35,7 +34,7 @@ classdef reducedPrimalPrg < frlibPrg
                 Kr = K;
                 Ar = A;
                 cr = c;
-                solMap ={};
+               
                 noReductions = 1;
 
             end
