@@ -16,6 +16,7 @@ classdef reducedPrimalPrg < frlibPrg
 
     methods
 
+        
         function self = reducedPrimalPrg(A,b,c,K,Karry,U,S)
 
             if (length(U) > 0)
