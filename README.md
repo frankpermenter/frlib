@@ -38,7 +38,7 @@ To use diagonally-dominant matrices ('dd') for the PSD approximation, one can re
 ```Matlab
 prgR = prg.ReducePrimal('dd');
 ```
-and the relevant line for the dual example with:
+and the relevant line of the dual example with:
 ```Matlab
 prgR = prg.ReduceDual('dd');
 ```
