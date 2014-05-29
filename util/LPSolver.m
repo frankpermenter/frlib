@@ -38,8 +38,10 @@ classdef LPSolver
         end
 
         function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+            
+            options.Display ='off';
             %calls mosek if in path
-            [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,options);
             infeas = flag == -2 | flag == -5;
             numErr = ~infeas && flag ~= 1;
         end
