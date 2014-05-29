@@ -33,7 +33,7 @@ prgR = prg.ReduceDual('d');
 ```
 
 ## Other approximations
-The above examples  used diagonal approximations ('d').  It is also possible to use diagonally-dominant matrices ('dd') for the PSD approximation, i.e. one can replace the relevant lines of the above examples with the following:
+To use diagonally-dominant matrices ('dd') for the PSD approximation, one can replace the relevant lines of the above examples with the following:
 
 ```Matlab
 prgR = prg.ReducePrimal('dd');
