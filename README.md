@@ -18,17 +18,12 @@ The second line
 ```Matlab
 prgR = prg.ReducePrimal('d');
 ```
-tells the code to reduce the primal SDP using a diagonal approximation ('d').  The last two lines solve the reduced SDP (by calling SeDuMi) and reconstruct a solution to the original primal SDP described by A,b,c,K.
+tells the code to reduce the primal SDP using a diagonal approximation ('d').  The next line solves the reduced SDP (by calling SeDuMi).  The last line reconstructs a solution to the original primal SDP described by A,b,c,K.
 
 
 ## Example (reduction of dual):
-To reduce the dual using non-negative diagonal approximations ('d'), issue the call:
+Reduction of the dual is similarly done, but doesn't require any solution recovery (i.e. a solution to the reduced dual solves the original dual described by A,b,c,K):
 
-```Matlab
-prgR = prg.ReduceDual('d');
-```
-
-Similarly, to reduce the dual using diagonally-dominant ('dd') approximations, issue the call:
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReduceDual('d');
