@@ -68,9 +68,7 @@ classdef reducedPrimalPrg < frlibPrg
         function PrintStats(self)
             facialRed.PrintStats(self.K,self.Korig);
         end
-        
-        
-        
+          
 
     end
 

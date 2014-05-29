@@ -1,30 +1,36 @@
-This repo contains matlab code for pre-processing SDPs.  Given an SDP that fails Slater's condition, the code searches
-for a lower dimensional face of the PSD cone containing the feasible set. If the search succeeds, the code reformulates the SDP explicitly
-over this face.  This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite
-constraint the reformulation will contain a single dxd constraint with d < n.
+#Overview
+This repo contains matlab code for pre-processing SDPs.  The code--frlib--reformulates an SDP that fails Slater's condition 
+into a smaller, equivalent SDP using facial reduction and approximations of the PSD cone. The reformulation is "smaller"
+in the sense that semidefinite constraints involve lower dimensional PSD cones. For instance, if the original problem had a single
+n \times n semidefinite constraint, the reformulation will have a d x d semidefinite constraint with d < n.
   
-To find a face efficiently, the code employs approximations of the PSD cone. Better approximations can lead to smaller reformulations at the cost of more computation.  Approximations currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.  These approximations are polyhedral
-and hence allow one to search for a face using linear programming.
 
-The code takes as input a primal-dual SDP pair expressed in SeDuMi formatted inputs A,b,c,K:
+Better approximations lead to more simplifications at the cost of more computation.  Approximations
+currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.
+
+
+#Example Usage:
+To reduce (i.e. reformulate) an SDP expressed in terms of SeDuMi formatted inputs A,b,c,K, first call:
+
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 ```
-The primal and/or the dual may fail Slater''s condition. You can choose which problem to reformulate (primal or dual).  
 
-To reformulate the dual using non-negative diagonal approximations ('d') or diagonally-dominant ('dd') approximations, issue a call
+The problem data A,b,c,K describe a primal-dual SDP pair.   You must choose which problem to reduce (primal or dual).
+
+To reduce the dual using non-negative diagonal approximations ('d') or diagonally-dominant ('dd') approximations, issue a call
 of the form:
 
 ```Matlab
 prgR = prg.ReduceDual('d');
 ```
-To solve the reformulated SDP, call:
+To solve the simplified SDP, call:
 ```Matlab
 [~,y] = prgR.Solve();
 ```
 The solution y solves the original dual SDP.  
 
-To simplify the primal, call
+To reduce the primal, call
 ```Matlab
 prgR = prg.ReducePrimal('d');
 ```
