@@ -7,7 +7,7 @@ The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted input
 
 
 ## Example (reduction of primal):
-To perform reductions, one specifies a  PSD approximation and the SDP (primal or dual) ones wishes to reduce. A typical use case is given below.
+To perform reductions, one specifies a  PSD approximation and the SDP (primal or dual) one wishes to reduce. A typical use case is given below.
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReducePrimal('d');
