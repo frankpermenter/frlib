@@ -6,7 +6,7 @@ classdef LPSolver
 
             solverExists = []; solverMethod = {};
 
-            solverExists(end+1) = ~isempty(which('linprog'));
+            solverExists(end+1) = LPSolver.CheckForMosek();
             solverMethod{end+1} = @LPSolver.SolveLPMosek;  
 
             solverExists(end+1) = ~isempty(which('gurobi'));
@@ -15,6 +15,10 @@ classdef LPSolver
             solverExists(end+1) = ~isempty(which('sedumi'));
             solverMethod{end+1} = @LPSolver.SolveLPSedumi;  
 
+            solverExists(end+1) = ~isempty(which('linprog'));
+            solverMethod{end+1} = @LPSolver.SolveLPlinprog;  
+            
+            
             for i=1:length(solverExists)
                 if solverExists(i)
                     solverHandle = solverMethod{i};
@@ -26,6 +30,14 @@ classdef LPSolver
 
         end
 
+        function exists = CheckForMosek
+            
+           pathlinProg = lower(which('linprog')); 
+           exists = ~isempty(strfind(pathlinProg,'mosek'));
+            
+        end
+        
+        
         function [x,numErr,infeas] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
             solverHandle = LPSolver.GetSolver();
@@ -37,13 +49,31 @@ classdef LPSolver
 
         end
 
-        function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,numErr,infeas] = SolveLPlinprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,noOptions)
             
-            options.Display ='off';
-            %calls mosek if in path
-            [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,options);
+            if ~exist('noOptions','var')
+                noOptions = 0;                
+            end
+            
+            if noOptions
+                [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            else
+                options.Display='off';
+                [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,options);  
+            end
+            
             infeas = flag == -2 | flag == -5;
             numErr = ~infeas && flag ~= 1;
+            
+        end
+        
+        
+        
+        function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+            
+            noOptions = 1;
+            [x,numErr,infeas] = LPSolver.SolveLPlinprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,noOptions);
+            
         end
 
         function [x,infeas,numErr] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
