@@ -65,6 +65,14 @@ classdef frlibPrg
                 useQR = 0;
             end
             
+            
+            if isfield(opts,'verbose')
+                verbose = opts.verbose;
+            else
+                verbose = 1;
+            end
+            
+            
             if isfield(opts,'removeDualEq')
                 removeDualEq = opts.removeDualEq;
             else
@@ -84,8 +92,16 @@ classdef frlibPrg
                 Ty = Ty1;
             end
             
+            if (verbose == 1)
+                pars.fid = 1;
+            else
+                pars.fid = 0;
+            end
+           
+            
+            
             if size(A,1) ~= 0
-                [x,y,info] = sedumi(A,b,c,K);
+                [x,y,info] = sedumi(A,b,c,K,pars);
                 y = Ty*y + y0;
             else
                 x = sparse(size(A,2),1); y = 0;
@@ -169,6 +185,8 @@ classdef frlibPrg
            pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
         end
 
+        
+        
         function pass = CheckPrimal(self,x,eps)
            pass = SolUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
         end
@@ -212,6 +230,7 @@ classdef frlibPrg
 
         function [prg] = ReduceDual(self,method)
 
+            
             if (strcmp(method,'d'))
                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
             end
@@ -242,7 +261,11 @@ classdef frlibPrg
 
             prg = reducedDualPrg(A,b,c,self.K,Karry,Uarry,Varry,Sarry);
 
+                      
         end
+        
+
+        
         
     end
 
