@@ -44,4 +44,4 @@ or
 ```Matlab
 prgR = prg.ReduceDual('dd');
 ```
-
+While this approximation is more expensive than the diagonal approximation ('d'), it widens the class of SDPs that can be simplified and may lead to smaller reformulations.
