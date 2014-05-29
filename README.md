@@ -4,12 +4,15 @@ into a smaller, equivalent SDP using facial reduction and approximations of the 
 in the sense that semidefinite constraints involve lower dimensional PSD cones. For instance, if the original problem had a single
 n \times n semidefinite constraint, the reformulation will have a d x d semidefinite constraint with d < n.
   
-
 Better approximations lead to more simplifications at the cost of more computation.  Approximations
 currently supported include non-negative diagonal matrices and PSD diagonally-dominant matrices.
 
+##Input formats
+The code takes in a primal-dual SDP pair formatted in SeDuMi format.
 
-#Example Usage:
+
+
+##Example Usage:
 To reduce (i.e. reformulate) an SDP expressed in terms of SeDuMi formatted inputs A,b,c,K, first call:
 
 ```Matlab
