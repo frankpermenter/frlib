@@ -9,7 +9,7 @@ The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted input
 
 
 ## Example (reduction of primal):
-To perform reductions, you must specify the type of PSD approximation and the SDP (primal or dual) you wish the reduce. A typical use case is given below.
+To perform reductions, one specifies a  PSD approximation and the SDP (primal or dual) ones wishes to reduce. A typical use case is given below.
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReducePrimal('d');
@@ -35,7 +35,7 @@ prgR = prg.ReduceDual('d');
 ```
 
 ## Other approximations
-The above examples  used diagonal approximations ('d').  It is also possible to use diagonally-dominant matrices ('dd') for the PSD approximation.  To do this, replace the relevant line in the above example with calls of the form:
+The above examples  used diagonal approximations ('d').  It is also possible to use diagonally-dominant matrices ('dd') for the PSD approximation, i.e. one can replace the relevant lines of the above examples with the following:
 
 ```Matlab
 prgR = prg.ReducePrimal('dd');
