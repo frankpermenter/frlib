@@ -27,7 +27,7 @@ Reduction of the dual is similarly done, but doesn't require any solution recove
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReduceDual('d');
-[~,y] = prgR.Solve();
+[~,y] = prgR.Solve(); %y also solves original dual
 
 ```
 
