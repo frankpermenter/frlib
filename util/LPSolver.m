@@ -29,14 +29,6 @@ classdef LPSolver
             solverHandle = [];
 
         end
-
-        function exists = CheckForMosek
-            
-           pathlinProg = lower(which('linprog')); 
-           exists = ~isempty(strfind(pathlinProg,'mosek'));
-            
-        end
-        
         
         function [x,numErr,infeas] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
 
@@ -58,17 +50,17 @@ classdef LPSolver
             if noOptions
                 [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             else
+                options = optimset(@linprog);
                 options.Display='off';
-                [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,options);  
+                [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,[],options);  
             end
             
             infeas = flag == -2 | flag == -5;
             numErr = ~infeas && flag ~= 1;
             
+            
         end
-        
-        
-        
+          
         function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             noOptions = 1;
@@ -146,7 +138,14 @@ classdef LPSolver
             numErr = info.numerr > 1;
 
         end
-
+            
+        function exists = CheckForMosek
+            
+           pathlinProg = lower(which('linprog')); 
+           exists = ~isempty(strfind(pathlinProg,'mosek'));
+            
+        end
+        
     end
 
 end
