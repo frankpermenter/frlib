@@ -61,7 +61,9 @@ classdef reducedDualPrg < frlibPrg
             self.Sarry = S;
             self.Karry = Karry;
             self.Varry = V;
-
+            self.Aorig = A;
+            self.corig = c;
+            self.Korig = K;
             self.solMap = solMap;
             self.noReductions = noReductions;
 
@@ -69,7 +71,11 @@ classdef reducedDualPrg < frlibPrg
             self.defaultSolveOpts = opts;
 
         end
-
+        
+        function PrintStats(self)
+            facialRed.PrintStats(self.K,self.Korig);
+        end
+        
 
     end
 
