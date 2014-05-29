@@ -1,8 +1,7 @@
 #Overview
 This repo contains MATLAB code for pre-processing SDPs. Given an SDP, the code searches for a lower dimensional face of the PSD cone containing the feasible set. If the search succeeds, the code reformulates the SDP explicitly over this face. This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite constraint the reformulation will contain a single dxd constraint with d < n.
 
-To make the search for a face 'easy', this code employs a user-specified approximation of the PSD cone.   Better approximations widen the class of SDPs that can be reformulated, but increase the cost of finding a face.
-
+To make the search for a face 'easy' (and practical for a pre-processor), this code employs a user-specified approximation of the PSD cone.   Better approximations widen the class of SDPs that can be reformulated, but increase the cost of finding a face. 
 
 The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted inputs A,b,c,K.  The code supports pre-processing of the either the primal or the dual SDP. Approximations currently supported are non-negative diagonal matrices and diagonally-dominant matrices.
 
