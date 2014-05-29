@@ -8,7 +8,7 @@ function frlibTests
     prg = frlibPrg(A,b,c,K);
 
     %diagonal
-    testdisplay('Checking reduction of primal (diagonal)');
+    TestDisplay('Checking reduction of primal (diagonal)');
     prgD = prg.ReducePrimal('d');
     PrintStats(prgD);
     
@@ -18,10 +18,12 @@ function frlibTests
     testPass(end+1) = pass & all(prgD.K.s == [6 56 11 1 1 0 11 1 1 0 11 11]);
     if ~(testPass(end))
         error('Test case failed')
+    else
+       TestDisplay('Pass') 
     end
 
     %diagonally dominant
-    testdisplay('Checking reduction of primal (diagonally dominant)');
+    TestDisplay('Checking reduction of primal (diagonally dominant)');
     prgDD = prgD.ReducePrimal('dd');
     PrintStats(prgDD);
     
@@ -36,7 +38,7 @@ function frlibTests
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    testdisplay('Checking reduction of dual');
+    TestDisplay('Checking reduction of dual');
     load testDual.mat;
     prg = frlibPrg(A,[],c,K);
     prgDD = prg.ReduceDual('dd');
@@ -73,7 +75,7 @@ end
 
 
 function pass = runHorn(opts)
-    testdisplay('Checking primal and dual reductions (horn form)');
+    TestDisplay('Checking primal and dual reductions (horn form)');
     pass = [];
     for i=2:5
         
@@ -105,7 +107,7 @@ function PrintStats(prg)
 
 end
 
-function testdisplay(msg)
+function TestDisplay(msg)
    fprintf(['\n']);
    display('**************************************************************');
    fprintf([msg,'\n']);
