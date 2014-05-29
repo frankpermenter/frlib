@@ -5,14 +5,20 @@ This repo contains matlab code for pre-processing SDPs. Given an SDP that fails 
 The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted inputs A,b,c,K.  The code supports pre-processing of the either the primal or the dual SDP.
 
 
-##Example Usage:
-To reduce (i.e. reformulate) an SDP, first create an frlibPrg object from the problem data:
-
+## Usage:
+To perform reductions, you must specify the type of PSD approximation and the SDP (primal or dual) you wish the reduce. A typical use case is given below.
 ```Matlab
 prg = frlibPrg(A,b,c,K);
-```
+prgR = prg.ReducePrimal('d');
+xR = prgR.Solve();
+x = prgR.RecoverPrimal(xR);
 
-To perform reductions, you must specify the type of PSD approximation and the SDP (primal or dual) you wish the reduce.
+```
+The second line 
+```Matlab
+prgR = prg.ReducePrimal('d');
+```
+tells the code to reduce the primal SDP using a diagonal approximation ('d').  The last two lines solve the reduced SDP (by calling SeDuMi) and reconstruct a solution to the original primal SDP described by A,b,c,K.
 
 
 ## Reduction of the dual SDP
