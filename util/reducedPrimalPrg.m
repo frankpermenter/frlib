@@ -1,6 +1,6 @@
 classdef reducedPrimalPrg < frlibPrg
 
-    properties
+    properties (GetAccess=protected)
 
         Uarry
         Varry
@@ -49,6 +49,7 @@ classdef reducedPrimalPrg < frlibPrg
             self.Korig = K;
             self.noReductions = noReductions;
             
+            
         end
 
         function [x] = RecoverPrimal(self,x)
@@ -63,6 +64,13 @@ classdef reducedPrimalPrg < frlibPrg
             x = Tuu*x;
 
         end
+        
+        function PrintStats(self)
+            facialRed.PrintStats(self.K,self.Korig);
+        end
+        
+        
+        
 
     end
 
