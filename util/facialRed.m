@@ -224,5 +224,12 @@ classdef facialRed
 
         end
 
+        
+        function PrintStats(K,Korig)
+            display([sprintf('\t'),'Before: Size of PSD constraint (K.s):',sprintf('\t'),sprintf('%d ',Korig.s)])
+            display([sprintf('\t'),'After:  Size of PSD constraint (K.s):',sprintf('\t'),sprintf('%d ',K.s)])
+        end
+        
+        
     end
 end
