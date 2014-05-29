@@ -3,7 +3,7 @@ This repo contains MATLAB code for pre-processing SDPs. Given an SDP, the code s
 
 While these reformulations are in principal possible for any SDP not strictly feasible, this code imposes further restrictions by employing a user-specified approximation of the PSD cone.  This is done to make the search for a face easy (and practical for a pre-processor).  Better approximations widen the class of SDPs that can be reformulated, but increase the cost of finding a face.
 
-###Input formats
+
 The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted inputs A,b,c,K.  The code supports pre-processing of the either the primal or the dual SDP.
 
 
