@@ -19,4 +19,4 @@ function setup()
     end
 
     display('Done!')
-    display('Type runTests to check installation.')
+    display('Type frlibTests to check installation.')
