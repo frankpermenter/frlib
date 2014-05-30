@@ -20,12 +20,12 @@ classdef reducedPrimalPrg < frlibPrg
          
             if (length(U) > 0)
                 
-                cone = ConeBase(K);
+                cone = coneBase(K);
 
                 Tuu = cone.BuildMultMap(U{end},U{end});
                 Ar = [A*Tuu'];
                 cr = [c*Tuu'];
-                Kr = ConeBase.cleanK(Karry{end});
+                Kr = coneBase.cleanK(Karry{end});
                 
                 noReductions = 0;
 
@@ -58,7 +58,7 @@ classdef reducedPrimalPrg < frlibPrg
                 return
             end
 
-            face = ConeBase(self.Karry{end});
+            face = coneBase(self.Karry{end});
             transposeU = 0;
             Tuu = face.BuildMultMap(self.Uarry{end},self.Uarry{end},transposeU);
             x = Tuu*x;

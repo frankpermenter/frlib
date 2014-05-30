@@ -1,6 +1,6 @@
-function [x0,nullS]=lsol(A,b)
+function [x0,nullS]=LinEqSol(A,b)
 
-    nullS = nullqr(A);
+    nullS = NullQR(A);
     if issparse(A)
 
         %Supress warnings from \ operator

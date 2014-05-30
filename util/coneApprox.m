@@ -1,11 +1,11 @@
-classdef ConeApprox < ConeBase
+classdef coneApprox < coneBase
 
 
     methods
 
-        function self = ConeApprox(K)
+        function self = coneApprox(K)
 
-            self@ConeBase(K);
+            self@coneBase(K);
 
         end
 

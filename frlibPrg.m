@@ -20,7 +20,7 @@ classdef frlibPrg
                error('Invalid input. 4th argument must be a struct')
             end
  
-            self.cone = ConeBase(K); 
+            self.cone = coneBase(K); 
              
             if  isempty(b)
                 b = zeros(size(A,1),1);
@@ -79,7 +79,7 @@ classdef frlibPrg
                 removeDualEq = 0;
             end
             
-            [A,b,Ty1] = cleanLinear(self.A,self.b,useQR); 
+            [A,b,Ty1] = CleanLinear(self.A,self.b,useQR); 
             y0 = 0;
 
             if removeDualEq & self.K.f > 0
@@ -115,7 +115,7 @@ classdef frlibPrg
                 costError = (c(:)-costNotFree(:))'*x;
                 eqError = self.b-self.A(:,indxNotFree)*x;
 
-                xf = lsol([self.A(:,indxFree);self.c(indxFree)],[eqError;costError]);
+                xf = LinEqSol([self.A(:,indxFree);self.c(indxFree)],[eqError;costError]);
                 x = [xf;x];
             end
 
@@ -123,7 +123,7 @@ classdef frlibPrg
 
         function [y] = SolveDual(self)
 
-            [A,b,T] = cleanLinear(self.A,self.b); 
+            [A,b,T] = CleanLinear(self.A,self.b); 
 
             if (self.K.f > 0) 
 
@@ -142,9 +142,9 @@ classdef frlibPrg
 
         function [x,y] = SolveMosek(self)
                 
-            [A,b,T] = cleanLinear(self.A,self.b); 
+            [A,b,T] = CleanLinear(self.A,self.b); 
             [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K); 
-            Z = ConeBase(Kr);
+            Z = coneBase(Kr);
             A = Z.Desymmetrize(Ar);
             c = Z.Desymmetrize(cr(:)');
             info = [];
@@ -188,11 +188,11 @@ classdef frlibPrg
         
         
         function pass = CheckPrimal(self,x,eps)
-           pass = SolUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
+           pass = solUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
         end
         
         function pass = CheckDual(self,y,eps)
-           pass = SolUtil.CheckDual(y,self.A,self.b,self.c,self.K,eps);  
+           pass = solUtil.CheckDual(y,self.A,self.b,self.c,self.K,eps);  
         end
 
         function [prg] = ReducePrimal(self,method)

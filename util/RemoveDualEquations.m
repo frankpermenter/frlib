@@ -1,6 +1,6 @@
 function [A,b,c,K,T,y0] = RemoveDualEquations(A,b,c,K)
 
-    Z = ConeBase(K);
+    Z = coneBase(K);
     [s,e] = Z.GetIndx('f',1);
     
     if (isempty(s))
@@ -13,7 +13,7 @@ function [A,b,c,K,T,y0] = RemoveDualEquations(A,b,c,K)
     Deq = A(:,s:e)';
     feq =  c(s:e);
      
-    [y0,T] = lsol(Deq,feq(:));
+    [y0,T] = LinEqSol(Deq,feq(:));
     
     Anew = T'*A;
     Cnew = c(:) - A'*y0;

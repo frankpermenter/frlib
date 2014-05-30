@@ -67,9 +67,9 @@ function [A,b,c,S] = RandomDualTestPSDCase(K,numEq,rankS,numIter)
     A = rand(numEq-1,N*N);
     S = diag([zeros(N-rankS,1);rand(rankS,1)]);
     
-    V = nullqr(S);
+    V = NullQR(S);
     
-    Z = ConeBase(K);
+    Z = coneBase(K);
     Stemp = S(:)';    
     Stemp(Z.indxDiag{1}) = Stemp(Z.indxDiag{1})/2;
     Stemp = Z.UpperTri(Stemp);
