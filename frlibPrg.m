@@ -20,7 +20,7 @@ classdef frlibPrg
                error('Invalid input. 4th argument must be a struct')
             end
  
-            self.cone = ConeBase(K); 
+            self.cone = coneBase(K); 
              
             if  isempty(b)
                 b = zeros(size(A,1),1);
@@ -144,7 +144,7 @@ classdef frlibPrg
                 
             [A,b,T] = cleanLinear(self.A,self.b); 
             [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K); 
-            Z = ConeBase(Kr);
+            Z = coneBase(Kr);
             A = Z.Desymmetrize(Ar);
             c = Z.Desymmetrize(cr(:)');
             info = [];
