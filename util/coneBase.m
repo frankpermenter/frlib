@@ -1,4 +1,4 @@
-classdef ConeBase
+classdef coneBase
 
     properties
         K
@@ -108,7 +108,7 @@ classdef ConeBase
 
     methods
 
-        function self = ConeBase(K)
+        function self = coneBase(K)
 
             self.K = self.cleanK(K);
             self = self.CalcIndices(self.K);
