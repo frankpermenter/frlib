@@ -1,4 +1,4 @@
-function [A,b,T]= cleanLinear(A,b,useQR)
+function [A,b,T]= CleanLinear(A,b,useQR)
   
     if (size(A,1) ~= length(b))
        error('Number of rows of A and b do not match.') 

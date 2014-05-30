@@ -129,7 +129,7 @@ classdef LPSolver
             try
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             catch
-                [A,b] = cleanLinear(A,b,1);
+                [A,b] = CleanLinear(A,b,1);
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             end
             x = sparse( xopt(1:N,1));

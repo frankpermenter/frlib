@@ -1,4 +1,4 @@
-function [nullA,rangeAt] = nullqr(A)
+function [nullA,rangeAt] = NullQR(A)
 
     n = size(A,1);
     [q,r,e] = qr(A');

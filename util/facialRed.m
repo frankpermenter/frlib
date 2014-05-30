@@ -45,7 +45,7 @@ classdef facialRed
             solMap.beta_uvt.s = solMap.shat_vvt.e + 1; 
             solMap.beta_uvt.e = solMap.beta_uvt.s + size(Aeq_c3,2)-1;
             
-            [Aeq,beq] = cleanLinear(Aeq,beq);
+            [Aeq,beq] = CleanLinear(Aeq,beq);
         
             Aineq = [-speye(numGens),sparse(numGens,numFree),speye(numGens)];
             bineq = zeros(size(Aineq,1),1);
@@ -72,7 +72,7 @@ classdef facialRed
             
             if ~all(cellfun(@isempty,U))
                 Tuu = cone.BuildMultMap(U,U);
-                face = ConeBase(Kface);
+                face = coneBase(Kface);
                 A = [Tuu*A']';
             else
                 face = cone;
@@ -89,7 +89,7 @@ classdef facialRed
             beq = sparse(size(Aeq,1),1);
 
             %Remove dependent equations.
-            [Aeq,beq] = cleanLinear(Aeq,beq);
+            [Aeq,beq] = CleanLinear(Aeq,beq);
 
             Aineq = [-speye(numGens),sparse(numGens,numY),speye(numGens)];
             bineq = sparse(size(Aineq,1),1);
@@ -186,11 +186,11 @@ classdef facialRed
         function [U,V,K] = Reduce(SblkDiag,U,V,Kface)
             
             K = Kface;
-            Z = ConeBase(Kface);
+            Z = coneBase(Kface);
             for i = 1:length(Kface.s)
                 [s,e] = Z.GetIndx('s',i);
                 S = mat(SblkDiag(s:e));
-                [B,rangeS] = nullqr(S);
+                [B,rangeS] = NullQR(S);
                 if (any(size(U{i}) ~= 0))
                     if ~isempty(V)
                         V{i} = [V{i},U{i} * rangeS];
@@ -210,7 +210,7 @@ classdef facialRed
 
         function W = GetGenerators(Kface,type)
             
-            Z = ConeApprox(Kface);
+            Z = coneApprox(Kface);
                 
             switch type
 

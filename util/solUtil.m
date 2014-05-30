@@ -1,4 +1,4 @@
-classdef SolUtil
+classdef solUtil
 
     methods(Static)
         
@@ -66,17 +66,17 @@ classdef SolUtil
                 eps = 10^-8;
             end
 
-            [l,q,r,s] = SolUtil.GetPrimalVars(x,K);
+            [l,q,r,s] = solUtil.GetPrimalVars(x,K);
             pass = [];
 
             pass(end+1) = all(l >= 0);
 
             for i=1:length(q) 
-                pass(end+1) = SolUtil.CheckLor( q{i},eps);
+                pass(end+1) = solUtil.CheckLor( q{i},eps);
             end
 
             for i=1:length(s)
-                pass(end+1) = SolUtil.CheckPSD( s{i},eps);
+                pass(end+1) = solUtil.CheckPSD( s{i},eps);
             end
 
             pass(end+1) = norm(A*x-b) < eps;
@@ -91,14 +91,14 @@ classdef SolUtil
                 eps = 10^-8;
             end
             
-            [l,q,r,s] = SolUtil.GetDualSlacks(y,A,c(:),K);
+            [l,q,r,s] = solUtil.GetDualSlacks(y,A,c(:),K);
             pass = [];
             for i=1:length(q) 
-                pass(end+1) = SolUtil.CheckLor( q{i},eps);
+                pass(end+1) = solUtil.CheckLor( q{i},eps);
             end
 
             for i=1:length(s)
-                pass(end+1) = SolUtil.CheckPSD( s{i},eps);
+                pass(end+1) = solUtil.CheckPSD( s{i},eps);
             end
             success = all(pass == 1);
 
@@ -107,16 +107,16 @@ classdef SolUtil
          
         function [dimOut] = GetSubSpaceDim(self,A,b,c,K,Primal)
 
-            A = cleanLinear(A,b);
+            A = CleanLinear(A,b);
             dimC = K.l + K.q + K.r;
             dimC = dimC + sum(K.s.^2/2+K.s/2);
 
             dimP = K.f + dimC - size(A,1);
 
-            A = cleanLinear(A,b*0); 
+            A = CleanLinear(A,b*0); 
             dimD = size(A,1);
 
-            dualEqs = cleanLinear(A(:,1:K.f),self.c(1:K.f)); 
+            dualEqs = CleanLinear(A(:,1:K.f),self.c(1:K.f)); 
             dimD = dimD - size(dualEqs,2);
 
             if (dimP + dimD ~= dimC)
@@ -158,7 +158,7 @@ classdef SolUtil
         
         function pass = CheckInFace(x,U,K,eps)
             
-            cone = ConeBase(K);
+            cone = coneBase(K);
              Kf = K;
             if (~isempty(U))
                 Tuu = cone.BuildMultMap(U,U);
@@ -168,7 +168,7 @@ classdef SolUtil
                 xface = x(:);
             end
                  
-            face = ConeBase(Kf);
+            face = coneBase(Kf);
             
             for i=1:length(Kf.s)
                 [s,e] = face.GetIndx('s',i);

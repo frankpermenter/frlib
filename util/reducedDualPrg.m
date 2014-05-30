@@ -18,7 +18,7 @@ classdef reducedDualPrg < frlibPrg
 
             if (length(U) > 0)
                 
-                cone = ConeBase(K);
+                cone = coneBase(K);
               
                 Tuu = cone.BuildMultMap(U{end},U{end});
                 Tuv = cone.BuildMultMap(U{end},V{end});
@@ -41,7 +41,7 @@ classdef reducedDualPrg < frlibPrg
 
                 Ar = [DualEqA,A*Tuu'];
                 cr = [DualEqC,c*Tuu'];
-                Kr = ConeBase.cleanK(Karry{end});
+                Kr = coneBase.cleanK(Karry{end});
                 Kr.f = Kr.f + size(DualEqA,2);
                 noReductions = 0;
 
