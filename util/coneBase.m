@@ -189,7 +189,16 @@ classdef coneBase
 
         end
 
-
+        
+        function A = InitSymmetric(self,vals)
+                       
+            A = sparse(size(vals,1), self.NumVar);
+            A(:,self.LowerTriIndx()) = vals;
+            A(:,self.UpperTriIndx()) = vals;
+            
+        end
+        
+        
         function A = Desymmetrize(self,A)
 
             indxDiag = cell2mat(self.indxDiag);
