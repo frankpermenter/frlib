@@ -107,20 +107,19 @@ classdef solUtil
          
         function [dimOut] = GetSubSpaceDim(self,A,b,c,K,Primal)
 
-            A = CleanLinear(A,b);
+            useQR = 1;
+            A = CleanLinear(A,b,useQR);
             dimC = K.l + K.q + K.r;
             dimC = dimC + sum(K.s.^2/2+K.s/2);
-
             dimP = K.f + dimC - size(A,1);
 
-            A = CleanLinear(A,b*0); 
             dimD = size(A,1);
 
-            dualEqs = CleanLinear(A(:,1:K.f),self.c(1:K.f)); 
-            dimD = dimD - size(dualEqs,2);
+            dualEqs = CleanLinear(A(:,1:K.f)',self.c(1:K.f),useQR); 
+            dimD = dimD - size(dualEqs,1);
 
             if (dimP + dimD ~= dimC)
-                %error('dim calc error')
+                error('dim calc error')
             end
 
             if Primal
