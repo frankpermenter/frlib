@@ -1,6 +1,6 @@
 classdef reducedDualPrg < frlibPrg
 
-    properties (GetAccess=protected)
+    properties 
         Uarry
         Varry
         Sarry
@@ -76,7 +76,68 @@ classdef reducedDualPrg < frlibPrg
             facialRed.PrintStats(self.K,self.Korig);
         end
         
+        function [xr,yr,primal_recov_success] = Recover(self,x,y,eps)
 
+            if (self.noReductions)
+                xr = x; yr = y;
+                return
+            end
+
+            if ~exist('eps','var')
+                eps = 10^-4;
+            end
+
+            yr = y;
+            [xr,~,primal_recov_success] = self.RecoverPrimal(x,eps);
+            if (primal_recov_success ~= 1)
+                xr = [];
+            end
+  
+        end
+      
+        function [xr,x0,success] = RecoverPrimal(self,x,eps)
+
+            success = 1;
+            if (self.noReductions)
+                xr = x; x0 = x; 
+                return
+            end
+                 
+            if ~exist('eps','var')
+                eps = 10^-4;
+            end
+            
+            U = self.Uarry; V = self.Varry;
+            solMap = self.solMap;
+            coneOrig = coneBase(self.Korig);
+            
+            s = self.cone.GetIndx('s',1);
+            sBar = x(s:end);
+            sHat = x(solMap.shat_vvt.s:solMap.shat_vvt.e);
+            beta = x(solMap.beta_uvt.s:solMap.beta_uvt.e);
+              
+            xflqr = coneOrig.GetIndx('s',1);
+            xflqr = x(solMap.beta_uvt.e+1:s-1);
+            
+            if ~all(cellfun(@isempty,U))     
+                [x,x11,x22,x21] = coneOrig.ConjBlock2by2(sBar,sHat,beta/2,U{end},V{end});
+            else
+                x = sBar;
+            end
+
+            x(1:length(xflqr)) = xflqr;
+            xr = x; 
+            x0 = xr;
+            fail = [];
+            
+            
+            ComputeDelta = @(t,dir) dir(:)*t;
+            [xr,success] = solUtil.LineSearch(x0,U,self.Sarry,self.Korig,ComputeDelta); 
+            
+ 
+        
+        end
+   
     end
 
 end
