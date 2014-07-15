@@ -105,21 +105,27 @@ classdef solUtil
         end
         
          
-        function [dimOut] = GetSubSpaceDim(self,A,b,c,K,Primal)
+        function [dimOut] = GetSubSpaceDim(self,Primal)
 
+            A = self.A; 
+            b = self.b;
+            c = self.c;
+            K = self.K;
+            cone = coneBase(K);
             useQR = 1;
             A = CleanLinear(A,b,useQR);
-            dimC = K.l + K.q + K.r;
-            dimC = dimC + sum(K.s.^2/2+K.s/2);
-            dimP = K.f + dimC - size(A,1);
+            numIndEq = size(A,1);
+            dimP = cone.NumVar - numIndEq;
 
-            dimD = size(A,1);
+            A = CleanLinear(self.A,self.b*0,useQR); 
+            numIndGen = size(A,1);
 
-            dualEqs = CleanLinear(A(:,1:K.f)',self.c(1:K.f),useQR); 
-            dimD = dimD - size(dualEqs,1);
+            dualEqs = CleanLinear(self.A(:,1:K.f)',self.c(1:K.f)',useQR); 
+            numIndDualEq = size(dualEqs,1);
+            dimD = numIndGen - numIndDualEq;
 
-            if (dimP + dimD ~= dimC)
-                error('dim calc error')
+            if (dimP + dimD ~= cone.NumVar-numIndDualEq)
+                error('dim calc error')       
             end
 
             if Primal
@@ -129,7 +135,7 @@ classdef solUtil
             end
 
         end
-               
+                 
         function pass = CheckLor(x,eps)
             pass = 1;
             if length(x) > 0
@@ -157,6 +163,7 @@ classdef solUtil
         
         function pass = CheckInFace(x,U,K,eps)
             
+            x = full(x);
             cone = coneBase(K);
              Kf = K;
             if (~isempty(U))
@@ -173,24 +180,63 @@ classdef solUtil
                 [s,e] = face.GetIndx('s',i);
 
                 xtest = mat(xface(s:e));
-                if issparse(xtest)
-                   eigf = @eigs;
+
+                if (min(eig(xtest)) > -eps) 
+                    pass(i) = 1;
                 else
-                   eigf = @eig; 
-                end
-                if (min(eigf(xtest)) > -eps) 
-                    pass = 1;
-                else
-                    pass = isempty(xtest);
+                    pass(i) = isempty(xtest);
                 end
             
             end
             
+            pass = all(pass);
+            
+        end
+        
+                                          
+        function [xr,success,deltas] = LineSearch(x,U,redCerts,Korig,ComputeDelta)
+            fail = [];
+
+            for i=length(U):-1:1
+
+                fail(i) = 1;
+                if (i >= 2)
+
+                    Uface = U{i-1};
+
+                else
+
+                    Uface = [];
+
+                end
+
+               delta = 0.0;
+                
+               for k = 1:100
+                    deltas(i) = delta;
+                    deltaX = ComputeDelta(delta,redCerts{i});
+                    xr = x(:)+deltaX(:);
+                    feas = solUtil.CheckInFace(xr,Uface,Korig,eps);
+                    if (feas == 0)
+                        delta = delta+1;
+                    else
+                        x = xr;
+                        
+                        fail(i) =  0;
+                        break;
+                    end
+               end
+
+            end
+            
+            success = ~any(fail == 0);
+            
         end
         
         
+                
         
-
+        
         function U = ExpandU(U)
             for i=2:length(U) 
                 for j=1:length(U{i});
