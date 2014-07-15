@@ -10,6 +10,7 @@ classdef frlibPrg
     properties(GetAccess=protected)
         cone
         defaultSolveOpts
+        defaultRedOpts
     end
 
     methods
@@ -50,7 +51,8 @@ classdef frlibPrg
             self.b = b;
             self.K = self.cone.K;
             self.defaultSolveOpts = [];
-
+            self.defaultRedOpts = [];
+            
         end
 
         function [x,y,info] = Solve(self,opts)
@@ -64,16 +66,14 @@ classdef frlibPrg
             else
                 useQR = 0;
             end
-            
-            
+                     
             if isfield(opts,'verbose')
                 verbose = opts.verbose;
             else
                 verbose = 1;
             end
-            
-            
-            if isfield(opts,'removeDualEq')
+             
+            if isfield(opts,'removeDualEq') 
                 removeDualEq = opts.removeDualEq;
             else
                 removeDualEq = 0;
@@ -83,32 +83,39 @@ classdef frlibPrg
             y0 = 0;
 
             if removeDualEq & self.K.f > 0
+                
                 [A,b,c,K,Ty2,y0] = RemoveDualEquations(A,b,self.c,self.K);
                 y0 = Ty1*y0;
                 Ty = Ty1*Ty2; 
+                
             else
+                
                 c = self.c;
                 K = self.K;
                 Ty = Ty1;
+                
             end
-            
-            if (verbose == 1)
-                pars.fid = 1;
-            else
-                pars.fid = 0;
-            end
-           
-            
             
             if size(A,1) ~= 0
+                
+                if (verbose == 1)
+                    pars.fid = 1;
+                else
+                    pars.fid = 0;
+                end
+                
                 [x,y,info] = sedumi(A,b,c,K,pars);
                 y = Ty*y + y0;
+                
             else
+                
                 x = sparse(size(A,2),1); y = 0;
                 y = y0;
+                
             end
 
             if removeDualEq
+                
                 indxNotFree = (self.K.f+1):size(self.A,2);
                 indxFree = 1:self.K.f;
                 costNotFree = self.c(indxNotFree);
@@ -117,6 +124,7 @@ classdef frlibPrg
 
                 xf = LinEqSol([self.A(:,indxFree);self.c(indxFree)],[eqError;costError]);
                 x = [xf;x];
+                
             end
 
         end
@@ -133,7 +141,9 @@ classdef frlibPrg
                 y = Tr*yReduced+y0;
 
             else
+                
                 [x,y,info] = sedumi(A,b,self.c,self.K);
+                
             end
             
             y = T*y;
@@ -179,23 +189,27 @@ classdef frlibPrg
         end 
       
         function pass = CheckSolution(self,x,y,eps)
+            
            pass = 1;
            pass = pass & self.CheckPrimal(x,eps);
            pass = pass & self.CheckDual(y,eps);
            pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
+           
         end
-
-        
-        
+    
         function pass = CheckPrimal(self,x,eps)
+            
            pass = solUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
+           
         end
         
         function pass = CheckDual(self,y,eps)
+            
            pass = solUtil.CheckDual(y,self.A,self.b,self.c,self.K,eps);  
+           
         end
 
-        function [prg] = ReducePrimal(self,method)
+        function [prg] = ReducePrimal(self,method,opts)
             
             if (strcmp(method,'d'))
                 procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'d',cone,Kface);
@@ -205,32 +219,41 @@ classdef frlibPrg
                  procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'dd',cone,Kface);
             end
 
-            A = self.A; b = self.b; c = self.c; Kface = self.K;
-            U = cell(1,length(self.K.s)); V = U;
-            Uarry = {}; Sarry = {}; Karry = {}; 
+            if ~exist('opts','var')
+                opts = self.defaultRedOpts;
+            end
+            
+            maxIter =  ParseRedOpts(opts);
+            
+            Kface = self.K;
+            U = cell(1,length(self.K.s)); 
+            Uarry = {}; Sarry = {}; Karry = {}; yRedarry = {};
 
+            iter = 1;
             while (1)
                 
-                [success,U,Kface,S] = procReduce(self,U,self.cone,Kface);
+                [success,U,Kface,S,yRed] = procReduce(self,U,self.cone,Kface);
                 if (success)
                     Uarry{end+1} = U;
                     Sarry{end+1} = S;
+                    yRedarry{end+1} = yRed;
                     Karry{end+1} = Kface;
                 end
 
-                if success == 0
+                if success == 0 || iter >= maxIter
                     break;
                 end
                 
+                iter = iter + 1;
+                
             end
 
-            prg = reducedPrimalPrg(A,b,c,self.K,Karry,Uarry,Sarry);
+            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Sarry,yRedarry);
 
         end
-
-        function [prg] = ReduceDual(self,method)
-
-            
+        
+        function [prg] = ReduceDual(self,method,opts)
+    
             if (strcmp(method,'d'))
                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
             end
@@ -239,10 +262,17 @@ classdef frlibPrg
                  procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'dd',cone,Kface);
             end
 
-            A = self.A; b = self.b; c = self.c; Kface = self.K;
+            if ~exist('opts','var')
+                opts = self.defaultRedOpts;
+            end
+            
+            maxIter = ParseRedOpts(opts);
+                
+            Kface = self.K;
             U = cell(1,length(self.K.s)); V = U;
             Uarry = {}; Sarry = {}; Karry = {}; Varry = {};
 
+            iter = 1;
             while (1)
                 
                 [success,U,V,Kface,S] = procReduce(self,U,V,self.cone,Kface);
@@ -253,20 +283,29 @@ classdef frlibPrg
                     Karry{end+1} = Kface;
                 end
 
-                if success == 0
+                if success == 0 || iter >= maxIter
                     break;
                 end
                 
+                iter = iter + 1;
+                
             end
 
-            prg = reducedDualPrg(A,b,c,self.K,Karry,Uarry,Varry,Sarry);
-
-                      
+            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry);
+            
         end
-        
-
-        
-        
+ 
     end
 
 end
+
+function [maxIter] = ParseRedOpts(opts)
+
+    if isfield(opts,'maxIter')
+        maxIter = opts.maxIter;
+    else
+        maxIter = 10^8;
+    end
+
+end
+
