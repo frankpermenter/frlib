@@ -99,9 +99,9 @@ classdef facialRed
 
         end
 
-        function [success,U,Kface,redCert] = PolyhedralPrimIter(self,U,gensOrType,cone,Kface)
+        function [success,U,Kface,redCert,yRed] = PolyhedralPrimIter(self,U,gensOrType,cone,Kface)
 
-            redCert = [];
+            redCert = []; yRed = [];
             if ischar(gensOrType)
                 W = facialRed.GetGenerators(Kface,gensOrType);
             else
@@ -127,8 +127,8 @@ classdef facialRed
                 x = sparse(x);
                 xtemp = sparse(x(1:numGens,1));
                 
-                y = x(solMap.y.s:solMap.y.e);
-                redCert = y'*self.A;
+                yRed = x(solMap.y.s:solMap.y.e);
+                redCert = yRed'*self.A;
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;         
                 
@@ -168,6 +168,7 @@ classdef facialRed
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;
                 
+                sBar = sBar(cone.Kstart.s(1):end);
                 sHat = x(solMap.shat_vvt.s:solMap.shat_vvt.e);
                 beta = x(solMap.beta_uvt.s:solMap.beta_uvt.e);
                 
@@ -211,7 +212,12 @@ classdef facialRed
         function W = GetGenerators(Kface,type)
             
             Z = coneApprox(Kface);
-                
+            if Z.NumVar == 0
+               W = [];
+               return
+            end
+            
+            
             switch type
 
                 case 'd'
