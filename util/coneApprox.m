@@ -22,9 +22,12 @@ classdef coneApprox < coneBase
                 carry = [carry;c];
                 varry = [varry;v];
             end
-
-            mats = sparse(rarry,carry,varry,max(rarry),self.NumVar);
-
+    
+            if ~isempty(rarry)
+                mats = sparse(rarry,carry,varry,max(rarry),self.NumVar);
+            else
+                mats = [];
+            end
         end
 
         function extR = extRaysDD(self)
