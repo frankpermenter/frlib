@@ -13,14 +13,25 @@ classdef coneApprox < coneBase
 
             carry = []; rarry = [];varry =[];
             for i=1:length(self.K.s)
-                if (all(size(U) == 2))
+                
+                if (size(U,1) ~= size(U,2))
+                   error('U must be square'); 
+                end
+                
+                if (size(U,1) > self.K.s(i))
+                   continue 
+                end
+                
+                if (size(U,1) == 2)
                     [r,c,v] = find(self.matsFromSubMat2x2_i(U,i));
                 else
                     [r,c,v] = find(self.matsFromSubMat_i(U,i));
                 end
-                rarry = [rarry;r];
-                carry = [carry;c];
-                varry = [varry;v];
+                
+                rarry = [rarry;r(:)];
+                carry = [carry;c(:)];
+                varry = [varry;v(:)];
+                
             end
     
             if ~isempty(rarry)
