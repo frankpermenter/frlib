@@ -11,14 +11,13 @@ classdef LPSolver
             
             solverExists(end+1) = ~isempty(which('gurobi'));
             solverMethod{end+1} = @LPSolver.SolveLPGurobi;
-            
+  
+            solverExists(end+1) = ~isempty(which('linprog'));
+            solverMethod{end+1} = @LPSolver.SolveLPlinprog;          
+
             solverExists(end+1) = ~isempty(which('sedumi'));
             solverMethod{end+1} = @LPSolver.SolveLPSedumi;
-            
-            solverExists(end+1) = ~isempty(which('linprog'));
-            solverMethod{end+1} = @LPSolver.SolveLPlinprog;
-            
-            
+                         
             for i=1:length(solverExists)
                 if solverExists(i)
                     solverHandle = solverMethod{i};
@@ -95,6 +94,7 @@ classdef LPSolver
             
             clear f A b B c l u x0 options;
             param.MSK_IPAR_INTPNT_BASIS = 0;
+            
             [rcode,res] = mosekopt(cmd,prob,param);
             
             if ( isfield(res,'sol') )

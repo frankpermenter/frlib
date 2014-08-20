@@ -11,18 +11,17 @@ classdef reducedPrimalPrg < frlibPrg
         corig
         Korig
         noReductions
+        lpSolveTime
 
     end
 
     methods
-
-        
-        function self = reducedPrimalPrg(A,b,c,K,Karry,U,S,yRedArry)
+ 
+        function self = reducedPrimalPrg(A,b,c,K,Karry,U,V,S,yRedArry,timeRed)
          
             if (length(U) > 0)
                 
                 cone = coneBase(K);
-
                 Tuu = cone.BuildMultMap(U{end},U{end});
                 Ar = [A*Tuu'];
                 cr = [c*Tuu'];
@@ -39,19 +38,19 @@ classdef reducedPrimalPrg < frlibPrg
                 noReductions = 1;
 
             end
-
-            
+      
             self@frlibPrg(Ar,b,cr,Kr);
             self.Uarry = U;
+            self.Varry = V;
             self.Sarry = S;
             self.yRedarry = yRedArry;
             self.Karry = Karry;
             self.Aorig = A;
             self.corig = c;
             self.Korig = K;
+            self.lpSolveTime = timeRed;
             self.noReductions = noReductions;
-            
-            
+                  
         end
 
         
@@ -65,18 +64,15 @@ classdef reducedPrimalPrg < frlibPrg
             if ~exist('eps','var')
                 eps = 10^-4;
             end
-
-            
+           
             xr = self.RecoverPrimal(x);
-            [yr,y0,dual_recov_success] = self.RecoverDual(y,eps);
+            [yr,~,dual_recov_success] = self.RecoverDual(y,eps);
             if (dual_recov_success ~= 1)
                 yr = [];
             end
   
         end
-        
-        
-        
+      
         function [x] = RecoverPrimal(self,x)
 
             if (self.noReductions)
@@ -86,13 +82,12 @@ classdef reducedPrimalPrg < frlibPrg
             face = coneBase(self.Karry{end});
             transposeU = 0;
             Tuu = face.BuildMultMap(self.Uarry{end},self.Uarry{end},transposeU);
-            x = Tuu*x;
+            x = Tuu*x(:);
 
         end
         
         
         function [yr,y0,success] = RecoverDual(self,y0,eps)
- 
 
             success = 1;
             if (self.noReductions)
@@ -105,22 +100,22 @@ classdef reducedPrimalPrg < frlibPrg
             end
             
             U = self.Uarry; 
-
-            
+    
             ComputeDelta = @(t,dir) t*dir'*self.Aorig;
             s0 = self.corig-y0'*self.Aorig;
-            [sr,success,deltas] = solUtil.LineSearch(s0,U,self.yRedarry,self.Korig,ComputeDelta); 
-            
-            yr = y0;
-            for i=1:length(U)
-                yr = yr - deltas(i)*self.yRedarry{i};
+         
+            [sr,success,deltas] = solUtil.LineSearch(s0,U,self.yRedarry,self.Korig,ComputeDelta,eps);    
+            if (success)
+                yr = y0;
+                for i=1:length(U)
+                    yr = yr - deltas(i)*self.yRedarry{i};
+                end
+            else
+                yr = [];
             end
-        
-            schk =  self.corig-yr'*self.Aorig;
-            
+
         end
-        
-        
+              
         function PrintStats(self)
             facialRed.PrintStats(self.K,self.Korig);
         end

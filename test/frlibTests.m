@@ -28,9 +28,12 @@ function frlibTests
     PrintStats(prgDD);
     
     [x,y] = prgDD.Solve(opts);
-    x1 = prgDD.RecoverPrimal(x);
+    [x1,y1] = prgDD.Recover(x,y);
+    pass  = prgD.CheckPrimal(x1,10^-4);
+    testPass(end+1) = pass;
+
     x2 = prgD.RecoverPrimal(x1);
-    pass  = prg.CheckPrimal(x2,10^-4);
+    pass = prg.CheckPrimal(x2,10^-4);
     testPass(end+1) = pass;
 
     if ~(testPass(end))
@@ -84,15 +87,16 @@ function pass = runHorn(opts)
         pred = p.ReducePrimal('dd');
         PrintStats(pred);
         
-        [x,~] = pred.Solve(opts);
-        x = pred.RecoverPrimal(x);
+        [x,y] = pred.Solve(opts);
+        [x,y] = pred.Recover(x,y);
   
         load(['hornD',num2str(i),'.mat']);
         d = frlibPrg(A,[],c(:),K);
         dred = d.ReduceDual('dd');
         PrintStats(dred);
-        [~,y] = dred.Solve(opts);
-        
+        [xr,yr] = dred.Solve(opts);
+        [~,y] = dred.Recover(xr,yr);
+
         eps = 10^-4;
         pass(end+1) = all(dred.K.s == pred.K.s) & d.CheckDual(y,eps) ...
             & p.CheckPrimal(x,eps) && all(dred.K.s < d.K.s);

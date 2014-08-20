@@ -99,9 +99,9 @@ classdef facialRed
 
         end
 
-        function [success,U,Kface,redCert,yRed] = PolyhedralPrimIter(self,U,gensOrType,cone,Kface)
+        function [success,U,V,Kface,redCert,yRed,timeRed] = PolyhedralPrimIter(self,U,V,gensOrType,cone,Kface)
 
-            redCert = []; yRed = [];
+            redCert = []; yRed = []; timeRed = [];
             if ischar(gensOrType)
                 W = facialRed.GetGenerators(Kface,gensOrType);
             else
@@ -116,8 +116,11 @@ classdef facialRed
             end
 
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildPrimLP(self.A,self.b,U,W,cone,Kface);
-            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             
+            tic;
+            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            timeRed = toc;
+           
             success = numerr == 0 & infeas == 0 & -cost'*x > .1;
 
             x = sparse(x);
@@ -132,13 +135,13 @@ classdef facialRed
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;         
                 
-                [U,~,Kface] = facialRed.Reduce(sBarExtRay,U,[],Kface);
+                [U,V,Kface] = facialRed.Reduce(sBarExtRay,U,V,Kface);
                 
             end
 
         end
 
-        function [success,U,V,Kface,redCert,solMap] = PolyhedralDualIter(self,U,V,gensOrType,cone,Kface)
+        function [success,U,V,Kface,redCert,timeRed] = PolyhedralDualIter(self,U,V,gensOrType,cone,Kface)
 
             W = [];  redCert = [];
             if ischar(gensOrType)
@@ -149,14 +152,18 @@ classdef facialRed
           
             numGens = size(W,1);
             success = 0;
-   
+            timeRed = [];
+            
             if (numGens == 0)
                 return;
             end
             
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildDualLP(self.A,self.c,U,V,W,cone);
-         
+            
+            tic;
             [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            timeRed = toc;
+            
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
                    
             if success
@@ -183,28 +190,95 @@ classdef facialRed
             end
 
         end
+                 
+        function [success,U,V,Kface,redCert,yRed,timeRed] = SDDPrimIter(self,U,V,cone,Kface)
+                 
+            coneFace = coneBase(Kface);
+            prg = spotsosprog;
+            m = size(self.A,1);
+            redCert = []; yRed = []; timeRed = [];
+            
+            if ~all(cellfun(@isempty,U))
+                
+                Tuu = cone.BuildMultMap(U,U);
+                A = self.A*Tuu';
+ 
+            else
+                
+                A = self.A;
+            end
+            
+            
+            [prg,u] = prg.newFree(m);
+            prg = prg.withEqs(u'*self.b);
+            S = sparse(1,coneFace.Kstart.s(1)-1);
+            for i=1:length(coneFace.K.s)  
+                if (coneFace.K.s(i) > 1 )
+                    [prg,Stemp] = prg.newSDD(coneFace.K.s(i));   
+                    S = [S,Stemp(:)'];
+                else
+                    [prg,Stemp] = prg.newPos(coneFace.K.s(i)); 
+                     S = [S,Stemp(:)'];
+                end
+            end
+            
+            prg = prg.withEqs(S-u'*A);
+            tr = sum(S(coneFace.indxNNeg));
+            prg = prg.withEqs(tr-1);
+            
+            try
+                tic
+                sol = prg.minimize(0,@spot_mosek);
+                timeRed = toc;
+                redCert = double(sol.eval(S));
+                yRed =  double(sol.eval(u));
+                success = 1;
+            catch
+                success = 0;
+                redCert = [];
+                
+            end
 
+            if (success == 0)
+               return 
+            end
+            %Heuristic rounding
+            redCert(find(round(redCert*10^6)==0)) = 0;
+           
+            [U,V,Kface] = facialRed.Reduce(redCert,U,V,Kface);
+        
+        
+        end 
+        
+        
+        
+        
+        
         function [U,V,K] = Reduce(SblkDiag,U,V,Kface)
             
             K = Kface;
             Z = coneBase(Kface);
             for i = 1:length(Kface.s)
+                
                 [s,e] = Z.GetIndx('s',i);
                 S = mat(SblkDiag(s:e));
                 [B,rangeS] = NullQR(S);
+                
                 if (any(size(U{i}) ~= 0))
-                    if ~isempty(V)
-                        V{i} = [V{i},U{i} * rangeS];
-                    end
+                  
+                    V{i} = [V{i},U{i} * rangeS];
                     U{i} = U{i} * B; 
-
+                    
                 else
+                    
                     if ~isempty(V)
                         V{i} = rangeS;
                     end
                     U{i} = B;  
+                    
                 end
                 K.s(i) = size(U{i},2); 
+                
             end
 
         end

@@ -82,14 +82,14 @@ classdef frlibPrg
             [A,b,Ty1] = CleanLinear(self.A,self.b,useQR); 
             y0 = 0;
 
-            if removeDualEq & self.K.f > 0
+            if removeDualEq && self.K.f > 0 && any(self.K.s > 0)
                 
                 [A,b,c,K,Ty2,y0] = RemoveDualEquations(A,b,self.c,self.K);
                 y0 = Ty1*y0;
                 Ty = Ty1*Ty2; 
                 
             else
-                
+                removeDualEq = 0;
                 c = self.c;
                 K = self.K;
                 Ty = Ty1;
@@ -103,7 +103,7 @@ classdef frlibPrg
                 else
                     pars.fid = 0;
                 end
-                
+
                 [x,y,info] = sedumi(A,b,c,K,pars);
                 y = Ty*y + y0;
                 
@@ -211,12 +211,22 @@ classdef frlibPrg
 
         function [prg] = ReducePrimal(self,method,opts)
             
+            procReduce = [];
             if (strcmp(method,'d'))
-                procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'d',cone,Kface);
+                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralPrimIter(self,U,V,'d',cone,Kface);
             end
 
             if strcmp(method,'dd')
-                 procReduce = @(self,U,cone,Kface) facialRed.PolyhedralPrimIter(self,U,'dd',cone,Kface);
+                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralPrimIter(self,U,V,'dd',cone,Kface);
+            end
+                      
+            if strcmp(method,'sdd')
+                error('sdd not supported')
+                %procReduce = @(self,U,V,cone,Kface) facialRed.SDDPrimIter(self,U,V,cone,Kface);
+            end
+            
+            if isempty(procReduce)
+                error('Valid approximation not specified.');
             end
 
             if ~exist('opts','var')
@@ -226,20 +236,22 @@ classdef frlibPrg
             maxIter =  ParseRedOpts(opts);
             
             Kface = self.K;
-            U = cell(1,length(self.K.s)); 
-            Uarry = {}; Sarry = {}; Karry = {}; yRedarry = {};
+            U = cell(1,length(self.K.s)); V = U;
+            Uarry = {};  Varry = {};  Sarry = {}; Karry = {}; yRedarry = {}; redTimeArry={};
 
             iter = 1;
             while (1)
-                
-                [success,U,Kface,S,yRed] = procReduce(self,U,self.cone,Kface);
+                 
+                [success,U,V,Kface,S,yRed,timeRed] = procReduce(self,U,V,self.cone,Kface);
                 if (success)
                     Uarry{end+1} = U;
+                    Varry{end+1} = V;
                     Sarry{end+1} = S;
                     yRedarry{end+1} = yRed;
                     Karry{end+1} = Kface;
                 end
 
+                redTimeArry{end+1} = timeRed;
                 if success == 0 || iter >= maxIter
                     break;
                 end
@@ -248,7 +260,7 @@ classdef frlibPrg
                 
             end
 
-            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Sarry,yRedarry);
+            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,yRedarry,redTimeArry);
 
         end
         
@@ -270,12 +282,12 @@ classdef frlibPrg
                 
             Kface = self.K;
             U = cell(1,length(self.K.s)); V = U;
-            Uarry = {}; Sarry = {}; Karry = {}; Varry = {};
+            Uarry = {}; Sarry = {}; Karry = {}; Varry = {}; redTimeArry={};
 
             iter = 1;
             while (1)
                 
-                [success,U,V,Kface,S] = procReduce(self,U,V,self.cone,Kface);
+                [success,U,V,Kface,S,timeRed] = procReduce(self,U,V,self.cone,Kface);
                 if (success)
                     Uarry{end+1} = U;
                     Sarry{end+1} = S;
@@ -283,6 +295,7 @@ classdef frlibPrg
                     Karry{end+1} = Kface;
                 end
 
+                redTimeArry{end+1} = timeRed;
                 if success == 0 || iter >= maxIter
                     break;
                 end
@@ -291,7 +304,7 @@ classdef frlibPrg
                 
             end
 
-            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry);
+            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,redTimeArry);
             
         end
  

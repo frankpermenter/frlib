@@ -435,14 +435,37 @@ classdef coneBase
             
         end
         
-        function [x,x11m,x21m,x22m] = ConjBlock2by2(self,x11,x22,x21,U,V)
+        function crossTerm = CrossTerms(self,x,U,V)
+            
+            Tuv = self.BuildMultMap(V,U);
+            VtXU = Tuv*x';
+            s = 1;
+            crossTerm = {};
+            
+            for i=1:length(self.K.s)
+
+                numColV = size(V{i},2);
+                numColU = size(U{i},2);
+
+                if (numColU + numColV == self.K.s(i))
+                    xtemp = reshape(VtXU(s:s+numColV*numColU-1),numColV,numColU);
+                    crossTerm{end+1} = xtemp;
+                else
+                    error(['numcol(U)+numcol(V) does not equal cone size(',num2str(self.K.s(i)),')']);
+                end
+
+            end
+        
+        end
+        
+        function [x,x11m,x12m,x22m] = ConjBlock2by2(self,x11,x22,x12,U,V)
             
             s = self.GetIndx('s',1);
             x = sparse(1,s-1);
             s1 = 1; s2 = 1; s3 = 1;
             
-            x11m = {}; x21m = {}; x22m = {};
-            
+            x11m = {}; x12m = {}; x22m = {};
+                         
             for i=1:length(self.K.s)
                 
                 numColV = size(V{i},2);
@@ -452,7 +475,7 @@ classdef coneBase
                     x11i = mat(x11(s1:s1+numColU*numColU-1));
                     x22i = mat(x22(s2:s2+numColV*numColV-1));
                     x22i = (x22i + x22i')/2;
-                    x12i = reshape(x21(s3:s3+numColV*numColU-1),numColU,numColV);
+                    x12i = reshape(x12(s3:s3+numColV*numColU-1),numColU,numColV);
                 else
                     error(['numcol(U)+numcol(V) does not equal cone size(',num2str(self.K.s(i)),')']);
                 end
@@ -460,12 +483,12 @@ classdef coneBase
                 s1 = s1+length(x11i(:));
                 s2 = s2+length(x22i(:));
                 s3 = s3+length(x12i(:));
+                  
+                x11m{i} = x11i;
+                x22m{i} = x22i;
+                x12m{i} = x12i;
                 
                 vx12u = U{i}*x12i*V{i}';
-                x11m{i} = U{i}*x11i*U{i}';
-                x22m{i} = V{i}*x22i*V{i}';
-                x12m{i} = vx12u;
-                
                 temp = U{i}*x11i*U{i}'+V{i}*x22i*V{i}'+vx12u+vx12u';
                 x = [x,temp(:)'];
                 if max(max(abs((temp)'-(temp)))) > 10^-3

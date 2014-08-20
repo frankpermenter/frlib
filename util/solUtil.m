@@ -115,8 +115,17 @@ classdef solUtil
             useQR = 1;
             A = CleanLinear(A,b,useQR);
             numIndEq = size(A,1);
-            dimP = cone.NumVar - numIndEq;
-
+            
+            dimCone = cone.K.f + cone.K.l + cone.K.r + cone.K.q;
+            for i=1:length(cone.K.s)
+                if (cone.K.s(i) > 0)
+                    dimCone = dimCone  + nchoosek(cone.K.s(i) + 1,2);
+                end
+            end
+            
+           
+            
+            dimP = dimCone - numIndEq;
             A = CleanLinear(self.A,self.b*0,useQR); 
             numIndGen = size(A,1);
 
@@ -124,8 +133,8 @@ classdef solUtil
             numIndDualEq = size(dualEqs,1);
             dimD = numIndGen - numIndDualEq;
 
-            if (dimP + dimD ~= cone.NumVar-numIndDualEq)
-                error('dim calc error')       
+            if (dimP + dimD ~= dimCone-numIndDualEq)
+                warning('dim calc error')       
             end
 
             if Primal
@@ -165,7 +174,7 @@ classdef solUtil
             
             x = full(x);
             cone = coneBase(K);
-             Kf = K;
+            Kf = K;
             if (~isempty(U))
                 Tuu = cone.BuildMultMap(U,U);
                 xface = Tuu*x(:);
@@ -194,7 +203,7 @@ classdef solUtil
         end
         
                                           
-        function [xr,success,deltas] = LineSearch(x,U,redCerts,Korig,ComputeDelta)
+        function [xr,success,deltas] = LineSearch(x,U,redCerts,Korig,ComputeDelta,eps)
             fail = [];
 
             for i=length(U):-1:1
@@ -229,20 +238,27 @@ classdef solUtil
 
             end
             
-            success = ~any(fail == 0);
+           success = ~any(fail == 1);
             
         end
         
         
-                
-        
-        
-        function U = ExpandU(U)
-            for i=2:length(U) 
-                for j=1:length(U{i});
-                U{i}{j} = U{i-1}{j}*U{i}{j};
+        function pass = CheckNullSpaceCondition(x0,K,Kface,U,V)        
+            
+            pass = 1;
+            cone = coneBase(K);        
+            ct = cone.CrossTerms(x0,U{end},V{end});
+            
+            Tuu = cone.BuildMultMap(U,V);
+            
+            UtsU = Tuu*x0';
+            
+            for i=1:length(ct)
+                if (ct*NullQR(UtsU))
+                    pass = 0;
                 end
             end
+            
         end
         
     end

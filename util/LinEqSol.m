@@ -1,5 +1,6 @@
 function [x0,nullS]=LinEqSol(A,b)
 
+    eps = 10^-9;
     nullS = NullQR(A);
     if issparse(A)
 

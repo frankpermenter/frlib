@@ -10,11 +10,12 @@ classdef reducedDualPrg < frlibPrg
         corig
         Korig
         noReductions
+        lpSolveTime
     end
 
     methods
 
-        function self = reducedDualPrg(A,b,c,K,Karry,U,V,S)
+        function self = reducedDualPrg(A,b,c,K,Karry,U,V,S,timeRed)
 
             if (length(U) > 0)
                 
@@ -66,7 +67,7 @@ classdef reducedDualPrg < frlibPrg
             self.Korig = K;
             self.solMap = solMap;
             self.noReductions = noReductions;
-
+            self.lpSolveTime = timeRed;
             opts.removeDualEq = 1;
             self.defaultSolveOpts = opts;
 
@@ -76,7 +77,7 @@ classdef reducedDualPrg < frlibPrg
             facialRed.PrintStats(self.K,self.Korig);
         end
         
-        function [xr,yr,primal_recov_success] = Recover(self,x,y,eps)
+        function [xr,yr,primal_recov_success,x0] = Recover(self,x,y,eps)
 
             if (self.noReductions)
                 xr = x; yr = y;
@@ -88,7 +89,7 @@ classdef reducedDualPrg < frlibPrg
             end
 
             yr = y;
-            [xr,~,primal_recov_success] = self.RecoverPrimal(x,eps);
+            [xr,x0,primal_recov_success] = self.RecoverPrimal(x,eps);
             if (primal_recov_success ~= 1)
                 xr = [];
             end
@@ -116,11 +117,9 @@ classdef reducedDualPrg < frlibPrg
             sHat = x(solMap.shat_vvt.s:solMap.shat_vvt.e);
             beta = x(solMap.beta_uvt.s:solMap.beta_uvt.e);
               
-            xflqr = coneOrig.GetIndx('s',1);
-            xflqr = x(solMap.beta_uvt.e+1:s-1);
-            
+            xflqr = x(solMap.beta_uvt.e+1:s-1);            
             if ~all(cellfun(@isempty,U))     
-                [x,x11,x22,x21] = coneOrig.ConjBlock2by2(sBar,sHat,beta/2,U{end},V{end});
+                [x,x11m,x12m,x22m] = coneOrig.ConjBlock2by2(sBar,sHat,beta/2,U{end},V{end});
             else
                 x = sBar;
             end
@@ -128,11 +127,19 @@ classdef reducedDualPrg < frlibPrg
             x(1:length(xflqr)) = xflqr;
             xr = x; 
             x0 = xr;
-            fail = [];
-            
-            
+     
+            if length(U) == 1
+                for i=1:length(x12m)
+                    if norm(x12m{i}'*NullQR(x11m{i}),'fro') > eps
+                        success = 0;
+                        return
+                    end         
+                end
+            end
+
+
             ComputeDelta = @(t,dir) dir(:)*t;
-            [xr,success] = solUtil.LineSearch(x0,U,self.Sarry,self.Korig,ComputeDelta); 
+            [xr,success] = solUtil.LineSearch(x0,U,self.Sarry,self.Korig,ComputeDelta,eps); 
             
  
         
