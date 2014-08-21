@@ -80,7 +80,7 @@ classdef reducedDualPrg < frlibPrg
         function [xr,yr,primal_recov_success,x0] = Recover(self,x,y,eps)
 
             if (self.noReductions)
-                xr = x; yr = y;
+                xr = x; yr = y; primal_recov_success = 1; x0 = x;
                 return
             end
 
