@@ -261,7 +261,9 @@ classdef facialRed
             for i = 1:length(Kface.s)
                 
                 [s,e] = Z.GetIndx('s',i);
-                S = mat(SblkDiag(s:e));
+
+                S = reshape(SblkDiag(s:e),Kface.s(i),Kface.s(i));
+
                 [B,rangeS] = NullQR(S);
                 
                 if (any(size(U{i}) ~= 0))
