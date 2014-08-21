@@ -26,7 +26,7 @@ classdef solUtil
 
             for i=1:length(K.s)
                 indx = offset + [1:K.s(i).^2];
-                psd{i} = mat(c(indx)' - y'*A(:,indx));
+                psd{i} = solUtil.mat(c(indx)' - y'*A(:,indx));
                 offset = offset + K.s(i).^2;
             end
             
@@ -54,7 +54,7 @@ classdef solUtil
             
             for i=1:length(K.s)
                 indx = offset + [1:K.s(i).^2];
-                psd{i} = mat(x(indx));
+                psd{i} = solUtil.mat(x(indx));
                 offset = offset + K.s(i).^2;
             end
             
@@ -123,8 +123,6 @@ classdef solUtil
                 end
             end
             
-           
-            
             dimP = dimCone - numIndEq;
             A = CleanLinear(self.A,self.b*0,useQR); 
             numIndGen = size(A,1);
@@ -188,7 +186,7 @@ classdef solUtil
             for i=1:length(Kf.s)
                 [s,e] = face.GetIndx('s',i);
 
-                xtest = mat(xface(s:e));
+                xtest = solUtil.mat(xface(s:e));
 
                 if (min(eig(xtest)) > -eps) 
                     pass(i) = 1;
@@ -241,8 +239,7 @@ classdef solUtil
            success = ~any(fail == 1);
             
         end
-        
-        
+          
         function pass = CheckNullSpaceCondition(x0,K,Kface,U,V)        
             
             pass = 1;
@@ -260,7 +257,13 @@ classdef solUtil
             end
             
         end
-        
+
+        function y = mat(x)
+            %emulates SeDuMi's function mat()
+            n = floor(sqrt(length(x)));
+            y = reshape(x,n,n);
+        end
+      
     end
             
 end

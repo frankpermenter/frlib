@@ -472,8 +472,8 @@ classdef coneBase
                 numColU = size(U{i},2);
                 
                 if (numColU + numColV == self.K.s(i))
-                    x11i = mat(x11(s1:s1+numColU*numColU-1));
-                    x22i = mat(x22(s2:s2+numColV*numColV-1));
+                    x11i = solUtil.mat(x11(s1:s1+numColU*numColU-1));
+                    x22i = solUtil.mat(x22(s2:s2+numColV*numColV-1));
                     x22i = (x22i + x22i')/2;
                     x12i = reshape(x12(s3:s3+numColV*numColU-1),numColU,numColV);
                 else
@@ -498,7 +498,8 @@ classdef coneBase
             end
             
         end
-        
+
+
 end
 
 
