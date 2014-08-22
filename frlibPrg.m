@@ -89,6 +89,7 @@ classdef frlibPrg
                 Ty = Ty1*Ty2; 
                 
             else
+
                 removeDualEq = 0;
                 c = self.c;
                 K = self.K;
@@ -126,27 +127,6 @@ classdef frlibPrg
                 x = [xf;x];
                 
             end
-
-        end
-
-        function [y] = SolveDual(self)
-
-            [A,b,T] = CleanLinear(self.A,self.b); 
-
-            if (self.K.f > 0) 
-
-                [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K);
-                [~,yReduced] = sedumi(Ar,br,cr,Kr);
-                
-                y = Tr*yReduced+y0;
-
-            else
-                
-                [x,y,info] = sedumi(A,b,self.c,self.K);
-                
-            end
-            
-            y = T*y;
 
         end
 
@@ -219,12 +199,7 @@ classdef frlibPrg
             if strcmp(method,'dd')
                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralPrimIter(self,U,V,'dd',cone,Kface);
             end
-                      
-            if strcmp(method,'sdd')
-                error('sdd not supported')
-                %procReduce = @(self,U,V,cone,Kface) facialRed.SDDPrimIter(self,U,V,cone,Kface);
-            end
-            
+                                 
             if isempty(procReduce)
                 error('Valid approximation not specified.');
             end
@@ -266,12 +241,17 @@ classdef frlibPrg
         
         function [prg] = ReduceDual(self,method,opts)
     
+            procReduce = [];
             if (strcmp(method,'d'))
                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
             end
 
             if strcmp(method,'dd')
-                 procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'dd',cone,Kface);
+                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'dd',cone,Kface);
+            end
+
+            if isempty(procReduce)
+                error('Valid approximation not specified.');
             end
 
             if ~exist('opts','var')
