@@ -182,7 +182,9 @@ classdef facialRed
                 if ~all(cellfun(@isempty,U))     
                     redCert = cone.ConjBlock2by2(sBar,sHat,beta/2,U,V);
                 else
-                    redCert = sBar;
+                    s = cone.GetIndx('s',1);
+                    temp = sparse(1,s-1);
+                    redCert = [temp,sBar'];
                 end
                 
                 [U,V,Kface] = facialRed.Reduce(sBarExtRay,U,V,Kface);
