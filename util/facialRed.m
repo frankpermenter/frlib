@@ -310,8 +310,13 @@ classdef facialRed
 
         
         function PrintStats(K,Korig)
-            display([sprintf('\t'),'Before: Size of PSD constraint (K.s):',sprintf('\t'),sprintf('%d ',Korig.s)])
-            display([sprintf('\t'),'After:  Size of PSD constraint (K.s):',sprintf('\t'),sprintf('%d ',K.s)])
+            if  all(K.s == Korig.s)
+                display(sprintf('frlib: No reductions found'));
+            else
+                display(sprintf('frlib: reductions found! Size of PSD constraint(s):'));
+                display([sprintf('\t'),'Before:',sprintf('\t'),sprintf('%d ',Korig.s)])
+                display([sprintf('\t'),'After:',sprintf('\t'),sprintf('%d ',K.s)])
+            end
         end
         
         
