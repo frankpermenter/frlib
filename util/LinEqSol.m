@@ -4,7 +4,7 @@ function [x0,nullS]=LinEqSol(A,b)
     nullS = NullQR(A);
     if issparse(A)
 
-        %Supress warnings from \ operator
+        %Suppress warnings from \ operator
         s1 = warning('off', 'MATLAB:rankDeficientMatrix');
         s2 = warning('off', 'MATLAB:singularMatrix');
 
