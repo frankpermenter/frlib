@@ -235,7 +235,7 @@ classdef frlibPrg
                 
             end
 
-            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,yRedarry,redTimeArry);
+            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,yRedarry,redTimeArry,opts);
 
         end
         
@@ -284,7 +284,7 @@ classdef frlibPrg
                 
             end
 
-            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,redTimeArry);
+            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,redTimeArry,opts);
             
         end
  
