@@ -9,11 +9,11 @@ function frlibTests
 
     %diagonal
     TestDisplay('Checking reduction of primal (diagonal)');
-    prgD = prg.ReducePrimal('d');
+    prgD = prg.ReducePrimal('d',opts);
     PrintStats(prgD);
     
-    [x,~] = prgD.Solve(opts);   
-    x0 = prgD.RecoverPrimal(x);
+    [x,y] = prgD.Solve(opts);   
+    x0 = prgD.Recover(x,y);
     pass  = prg.CheckPrimal(x0,10^-4);
     testPass(end+1) = pass & all(prgD.K.s == [6 56 11 1 1 0 11 1 1 0 11 11]);
     if ~(testPass(end))
@@ -24,7 +24,7 @@ function frlibTests
 
     %diagonally dominant
     TestDisplay('Checking reduction of primal (diagonally dominant)');
-    prgDD = prgD.ReducePrimal('dd');
+    prgDD = prgD.ReducePrimal('dd',opts);
     PrintStats(prgDD);
     
     [x,y] = prgDD.Solve(opts);
@@ -32,7 +32,7 @@ function frlibTests
     pass  = prgD.CheckPrimal(x1,10^-4);
     testPass(end+1) = pass;
 
-    x2 = prgD.RecoverPrimal(x1);
+    x2 = prgD.Recover(x1,y1);
     pass = prg.CheckPrimal(x2,10^-4);
     testPass(end+1) = pass;
 
@@ -84,7 +84,7 @@ function pass = runHorn(opts)
         
         load(['horn',num2str(i),'.mat']);
         p = frlibPrg(A,b,[],K);
-        pred = p.ReducePrimal('dd');
+        pred = p.ReducePrimal('dd',opts);
         PrintStats(pred);
         
         [x,y] = pred.Solve(opts);
@@ -92,7 +92,7 @@ function pass = runHorn(opts)
   
         load(['hornD',num2str(i),'.mat']);
         d = frlibPrg(A,[],c(:),K);
-        dred = d.ReduceDual('dd');
+        dred = d.ReduceDual('dd',opts);
         PrintStats(dred);
         [xr,yr] = dred.Solve(opts);
         [~,y] = dred.Recover(xr,yr);
