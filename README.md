@@ -1,5 +1,5 @@
 #Overview
-This repo contains MATLAB code for pre-processing SDPs using techniques described in the paper *Partial facial reduction: simplified, equivalent SDPs via approximations of the PSD cone* by Permenter and Parrilo.
+This repo contains MATLAB code for pre-processing SDPs using techniques described in the paper *Partial facial reduction: simplified, equivalent SDPs via approximations of the PSD cone* by Permenter and Parrilo.  The code is still under active development, so interface changes are possible.  Bug reports are also welcomed and appreciated!
 
 Given an SDP, the code searches for a lower dimensional face of the PSD cone containing the feasible set. If the search succeeds, the code reformulates the SDP explicitly over this face. This results in an SDP with "smaller" semidefinite constraints, i.e. if the original SDP contained a single nxn semidefinite constraint the reformulation will contain a single dxd constraint with d < n.
 
