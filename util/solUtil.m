@@ -219,7 +219,8 @@ classdef solUtil
 
                delta = 0.0;
                 
-               for k = 1:100
+               %rewrite this as a gevp?
+               for k = 1
                     deltas(i) = delta;
                     deltaX = ComputeDelta(delta,redCerts{i});
                     xr = x(:)+deltaX(:);
@@ -227,13 +228,12 @@ classdef solUtil
                     if (feas == 0)
                         delta = delta+1;
                     else
-                        x = xr;
-                        
+                        x = xr;  
                         fail(i) =  0;
                         break;
                     end
                end
-
+               
             end
             
            success = ~any(fail == 1);
