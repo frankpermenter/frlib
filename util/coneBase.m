@@ -418,8 +418,9 @@ classdef coneBase
                     end
 
                     [r,c,v] = find(temp);
-                    r = r+indx-1;
-                    c = c+s-1;
+                    r = r(:)+indx-1;
+                    c = c(:)+s-1;
+                    v = v(:);
 
                     rarry = [rarry;r];
                     carry = [carry;c];
