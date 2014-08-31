@@ -35,7 +35,7 @@ classdef LPSolver
             if isempty(solverHandle)
                 error('No solvers found!')
             else
-                [x,infeas,numErr] = solverHandle(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+                [x,numErr,infeas] = solverHandle(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             end
             
         end
