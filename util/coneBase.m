@@ -119,6 +119,11 @@ classdef coneBase
            y = length(self.indxNNeg) > 0;
         end
 
+        function y = NumFlqrVars(self)
+           [s,e] = self.flqrIndx();
+           y = max(0,e-s+1);
+        end
+
 
         function indx =  LowerTriIndx(self)
 
@@ -227,7 +232,7 @@ classdef coneBase
                    
            s = 1;
            e = max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
-            
+  
         end
         
         function [startPos,endPos]= GetIndx(self,cone,num)
@@ -418,9 +423,9 @@ classdef coneBase
                     end
 
                     [r,c,v] = find(temp);
-                    r = r+indx-1;
-                    c = c+s-1;
-
+                    r = r(:)+indx-1;
+                    c = c(:)+s-1;
+                    v = v(:);
                     rarry = [rarry;r];
                     carry = [carry;c];
                     varry = [varry;v];
