@@ -35,6 +35,7 @@ function CheckTest(numEq,exactlyZero,A,b,c,K)
   
 
     b = [1,0,0,0]';
+    A = sparse(A); b = sparse(b); c = sparse(c);
     f = frlibPrg(A,b,c,K);
 
     opts.removeDualEq = 1;
@@ -49,8 +50,12 @@ function CheckTest(numEq,exactlyZero,A,b,c,K)
     end
 
     [xreq,yreq] = sedumi(req.A,req.b,req.c,req.K);
+    xreq = sparse(xreq); yreq = sparse(yreq);
+    
     [xrnoeq,yrnoeq] = sedumi(rnoeq.A,rnoeq.b,rnoeq.c,rnoeq.K);
-
+    %for baby problem, sedumi doesn't output sparse answers?
+    xrnoeq = sparse(xrnoeq); yrnoeq = sparse(yrnoeq);
+    
     [xrecov,yrecov] = req.Recover(xreq,yreq);
     f.CheckSolution(xrecov,yrecov,eps);
 
