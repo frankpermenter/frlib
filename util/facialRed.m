@@ -2,7 +2,7 @@ classdef facialRed
 
     methods(Static)
 
-        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = BuildDualLP(A,c,U,V,W,cone)
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = BuildDualLP(A,c,face,W)
 
             numGens = size(W,1);
             numEq = size(A,1)+1;
@@ -11,19 +11,11 @@ classdef facialRed
                 error('No generators specified. size(W,1) = 0')
             end
 
-            if ~all(cellfun(@isempty,U))
-                
-                Tuu = cone.BuildMultMap(U,U);
-                Tuv = cone.BuildMultMap(U,V);
-                Tvv = cone.BuildMultMap(V,V);
-                
-                [s,e] = cone.flqrIndx();
-                Tvv(s:e,:) = 0;
-                Tuv(s:e,:) = 0;
-                
-                Aeq_c1 = [W*(Tuu*A'),W*(Tuu*c(:))]';
-                Aeq_c2 = [Tvv*A',Tvv*c(:)]';
-                Aeq_c3 = [Tuv*A',Tuv*c(:)]';
+            if face.isProper
+                 
+                Aeq_c1 = [(face.coneToFace*A')'*W';(face.coneToFace*c')'*W'];
+                Aeq_c2 = [A*face.spanConjFace';c*face.spanConjFace'];
+                Aeq_c3 = [A*face.resSubspace';c*face.resSubspace'];
                 
             else
                 
@@ -55,7 +47,7 @@ classdef facialRed
 
         end
 
-        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = BuildPrimLP(A,b,U,W,cone,Kface)
+        function [c,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = BuildPrimLP(A,b,face,W)
 
             %equation: \sum_i A_i mu_i = \sum_i s_i W_i
             % s_i \ge t_i \ge 0
@@ -69,17 +61,12 @@ classdef facialRed
             solMap.y.s = numGens + 1;
             solMap.y.e = numY+solMap.y.s-1;
 
-            
-            if ~all(cellfun(@isempty,U))
-                Tuu = cone.BuildMultMap(U,U);
-                face = coneBase(Kface);
-                A = [Tuu*A']';
-            else
-                face = cone;
+            if face.isProper
+                A = [face.coneToFace*A']';
             end
             
-            A = face.LowerTri(A);
-            W = face.LowerTri(W);
+            A = face.parser.LowerTri(A);
+            W = face.parser.LowerTri(W);
             
             Aeq1 = [-W',A'];
             Aeq2 = [sparse(1,numGens),b'];
@@ -99,66 +86,58 @@ classdef facialRed
 
         end
 
-        function [success,U,V,Kface,redCert,yRed,timeRed] = PolyhedralPrimIter(self,U,V,gensOrType,cone,Kface)
-
-            redCert = []; yRed = []; timeRed = [];
+        function W = GetGeneratorsOfApprox(face,gensOrType)
+            
+            W = [];  
             if ischar(gensOrType)
-                W = facialRed.GetGenerators(Kface,gensOrType);
+                W = facialRed.GetGenerators(face.K,gensOrType);
             else
                 W = gensOrType;
             end
-          
-            numGens = size(W,1);
-            success = 0;
-   
-            if (numGens == 0)
-                return;
-            end
+         
+        end
+        
+        function [success,newFace,timeRed]  = PolyhedralPrimIter(self,face,gensOrType)
 
-            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildPrimLP(self.A,self.b,U,W,cone,Kface);
+            success = 0; newFace = []; redCert = []; timeRed = []; 
+            
+            W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
+            numGens = size(W,1);
+            if numGens == 0, return, end
+            
+            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildPrimLP(self.A,self.b,face,W);
             
             tic;
             [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             timeRed = toc;
            
-            success = numerr == 0 & infeas == 0 & -cost'*x > .1;
-
-            x = sparse(x);
-            
+            success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
+   
             if success
 
                 x = sparse(x);
                 xtemp = sparse(x(1:numGens,1));
                 
                 yRed = x(solMap.y.s:solMap.y.e);
-                redCert = yRed'*self.A;
+                
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;         
                 
-                [U,V,Kface] = facialRed.Reduce(sBarExtRay,U,V,Kface);
-                
+                [newFace] = face.Intersect(sBarExtRay);
+                newFace.redCert.y = yRed;
+                newFace.redCert.S = yRed'*self.A;
             end
 
         end
+             
+        function [success,newFace,timeRed] = PolyhedralDualIter(self,face,gensOrType)
 
-        function [success,U,V,Kface,redCert,timeRed] = PolyhedralDualIter(self,U,V,gensOrType,cone,Kface)
-
-            W = [];  redCert = [];
-            if ischar(gensOrType)
-                W = facialRed.GetGenerators(Kface,gensOrType);
-            else
-                W = gensOrType;
-            end
-          
+            success = 0; newFace = []; redCert = []; timeRed = []; 
+            W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
             numGens = size(W,1);
-            success = 0;
-            timeRed = [];
+            if numGens == 0, return, end
             
-            if (numGens == 0)
-                return;
-            end
-            
-            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildDualLP(self.A,self.c,U,V,W,cone);
+            [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildDualLP(self.A,self.c,face,W);
             
             tic;
             [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
@@ -175,38 +154,33 @@ classdef facialRed
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;
                 
-                sBar = sBar(cone.Kstart.s(1):end);
                 sHat = x(solMap.shat_vvt.s:solMap.shat_vvt.e);
                 beta = x(solMap.beta_uvt.s:solMap.beta_uvt.e);
                 
-                if ~all(cellfun(@isempty,U))     
-                    redCert = cone.ConjBlock2by2(sBar,sHat,beta/2,U,V);
+                if face.isProper   
+                    redCert = face.coneToFace'*sBar(:)+face.resSubspace'*beta(:)+face.spanConjFace'*sHat(:);
                 else
-                    s = cone.GetIndx('s',1);
-                    temp = sparse(1,s-1);
-                    redCert = [temp,sBar'];
+                    redCert = sBar;
                 end
                 
-                [U,V,Kface] = facialRed.Reduce(sBarExtRay,U,V,Kface);
+                [newFace] = face.Intersect(sBarExtRay);
+                newFace.redCert.S = redCert;
                 
             end
 
         end
                  
-        function [success,U,V,Kface,redCert,yRed,timeRed] = SDDPrimIter(self,U,V,cone,Kface)
+        function [success,U,V,Kface,redCert,yRed,timeRed] = SDDPrimIter(self,face,cone)
                  
-            coneFace = coneBase(Kface);
+            coneFace = coneBase(face.K);
             prg = spotsosprog;
             m = size(self.A,1);
             redCert = []; yRed = []; timeRed = [];
             
-            if ~all(cellfun(@isempty,U))
-                
+            if ~all(cellfun(@isempty,U))     
                 Tuu = cone.BuildMultMap(U,U);
                 A = self.A*Tuu';
- 
             else
-                
                 A = self.A;
             end
             
@@ -229,13 +203,16 @@ classdef facialRed
             prg = prg.withEqs(tr-1);
             
             try
+
                 tic
                 sol = prg.minimize(0,@spot_mosek);
                 timeRed = toc;
                 redCert = double(sol.eval(S));
                 yRed =  double(sol.eval(u));
                 success = 1;
+
             catch
+
                 success = 0;
                 redCert = [];
                 
@@ -248,44 +225,8 @@ classdef facialRed
             redCert(find(round(redCert*10^6)==0)) = 0;
            
             [U,V,Kface] = facialRed.Reduce(redCert,U,V,Kface);
-        
-        
+                
         end 
-        
-        
-        
-        
-        
-        function [U,V,K] = Reduce(SblkDiag,U,V,Kface)
-            
-            K = Kface;
-            Z = coneBase(Kface);
-            for i = 1:length(Kface.s)
-                
-                [s,e] = Z.GetIndx('s',i);
-
-                S = reshape(SblkDiag(s:e),Kface.s(i),Kface.s(i));
-
-                [B,rangeS] = NullQR(S);
-                
-                if (any(size(U{i}) ~= 0))
-                  
-                    V{i} = [V{i},U{i} * rangeS];
-                    U{i} = U{i} * B; 
-                    
-                else
-                    
-                    if ~isempty(V)
-                        V{i} = rangeS;
-                    end
-                    U{i} = B;  
-                    
-                end
-                K.s(i) = size(U{i},2); 
-                
-            end
-
-        end
 
         function W = GetGenerators(Kface,type)
             
@@ -307,18 +248,6 @@ classdef facialRed
             end
 
         end
-
-        
-        function PrintStats(K,Korig)
-            if  all(K.s == Korig.s)
-                display(sprintf('frlib: No reductions found'));
-            else
-                display(sprintf('frlib: reductions found! Size of PSD constraint(s):'));
-                display([sprintf('\t'),'Before:',sprintf('\t'),sprintf('%d ',Korig.s)])
-                display([sprintf('\t'),'After:',sprintf('\t'),sprintf('%d ',K.s)])
-            end
-        end
-        
-        
+   
     end
 end
