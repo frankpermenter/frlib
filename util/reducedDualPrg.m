@@ -1,77 +1,48 @@
-classdef reducedDualPrg < frlibPrg
-
-    properties (SetAccess=protected)
-        
-        Uarry
-        Varry
-        Sarry
-        Karry
-        Aorig
-        borig
-        corig
-        Korig
-        noReductions
-        lpSolveTime
-        opts
-        
-    end
-
+classdef reducedDualPrg < reducedPrg
+   
     properties(Access=protected)
         
-        Ty
-        y0
-        AwithEq;
-        bwithEq;
-        cwithEq;
-        KwithEq;
-        dualEqMap;
-       
+        prgWithEq;
+
     end
-    
+
     methods
 
-        function self = reducedDualPrg(A,b,c,K,Karry,U,V,S,timeRed,opts)
-            
-            c = c(:)';
-            Aorig = A; borig = b; corig = c; Korig = K;
+        function self = reducedDualPrg(unreducedPrg,faces,opts)
             
             if ~isfield(opts,'useQR')
                 opts.useQR = 0;
             end
-                               
+
             if ~isfield(opts,'removeDualEq') 
                 opts.removeDualEq = 0;
             end
 
-            noReductions = isempty(U);
 
-            if ~(noReductions)
+            if faces{end}.isProper
                  
-                [A,b,Ty] = CleanLinear(A,b,opts.useQR);
-                y0 = 0;
+                y0 = 0; Ty = speye(size(unreducedPrg.A,1));
                 
-                cone = coneBase(K);
-                Kr = coneBase.cleanK(Karry{end});
+                Auu = [faces{end}.coneToFace*unreducedPrg.A']';
+                cuu = [faces{end}.coneToFace*unreducedPrg.c']';
 
-                [DualEqA,DualEqC,Tuu,~,~,dualEqMap] = GetDualEqs(cone,U{end},V{end},A,c);
-                Auu = [A*Tuu'];
-                cuu = [c(:)'*Tuu'];
+                [DualEqA,DualEqC] = faces{end}.FacePerpEqs(unreducedPrg.A,unreducedPrg.c);
 
-                AwithEq = [DualEqA,Auu];
-                cwithEq = [DualEqC,cuu];
-                KwithEq = coneBase.cleanK(Karry{end});
-                KwithEq.f = KwithEq.f + size(DualEqA,2);
+                prgWithEq.A = [DualEqA,Auu];
+                prgWithEq.b = unreducedPrg.b;
+                prgWithEq.c = [DualEqC,cuu];
+                prgWithEq.K = faces{end}.K;
+                
+                prgWithEq.K.f = prgWithEq.K.f + size(DualEqA,2);
 
                 if ~opts.removeDualEq
 
-                    Ar = AwithEq;
-                    br = b;
-                    cr = cwithEq;
-                    Kr = KwithEq;
+                    redPrg = prgWithEq;
    
                 else
 
-                    [Ar,br,cr,Ttemp,y0temp] = PreSolveDualEqs(DualEqA,DualEqC,Auu,b,cuu);
+                    [redPrg,Ttemp,y0temp] = PreSolveDualEqs(DualEqA,DualEqC,Auu,unreducedPrg.b,cuu);
+                    redPrg.K = faces{end}.K;
                     y0 = y0temp;
                     Ty = Ttemp;
 
@@ -81,45 +52,24 @@ classdef reducedDualPrg < frlibPrg
                
                 y0 = [];
                 Ty = [];
-                Kr = K;
-                Ar = A;
-                br = b;
-                cr = c;
-                AwithEq = A;
-                bwithEq = b;
-                cwithEq = c;
-                KwithEq = K;
-                dualEqMap = {};
-               
+
+                redPrg = unreducedPrg;
+                prgWithEq = unreducedPrg;
+    
             end
            
-            self@frlibPrg(Ar,br,cr,Kr);
-            self.Uarry = U;
-            self.Sarry = S;
-            self.Karry = Karry;
-            self.Varry = V;
-            self.Aorig = Aorig;
-            self.borig = borig;
-            self.corig = corig;
-            self.Korig = Korig;
+            self@reducedPrg(redPrg.A,redPrg.b,redPrg.c,redPrg.K);
+            self.faces = faces;
+            self.unreducedPrg = unreducedPrg;
 
-            self.noReductions = noReductions;
-            self.lpSolveTime = timeRed;
-            
-            self.AwithEq = AwithEq;
-            self.bwithEq = b;
-            self.cwithEq = cwithEq;
-            self.KwithEq = KwithEq;
-            self.dualEqMap = dualEqMap;
+           
+            self.prgWithEq = prgWithEq;
+
             self.defaultSolveOpts = [];
             self.opts = opts;
             self.Ty = Ty;
             self.y0 = y0;
            
-        end
-        
-        function PrintStats(self)
-            facialRed.PrintStats(self.K,self.Korig);
         end
         
         function [xr,yr,primal_recov_success,x0] = Recover(self,x,y,eps)
@@ -172,45 +122,32 @@ classdef reducedDualPrg < frlibPrg
             freeRecovFailed = 0; 
             if self.opts.removeDualEq
 
-                e1 = self.dualEqMap.beta_uvt.e;
-                e2 = self.dualEqMap.shat_vvt.e;
-                n = max(e1,e2);
+                n = self.faces{end}.spanConjFaceDim + self.faces{end}.resSubspaceDim;
                
-                costError = (self.cwithEq(n+1:end)-self.c(:)')*x;
-                eqError = self.bwithEq-self.AwithEq(:,n+1:end)*x;
+                costError = (self.prgWithEq.c(n+1:end)-self.c(1:end))*x;
+                eqError = self.prgWithEq.b-self.prgWithEq.A(:,n+1:end)*x;
                 
-                xf = LinEqSol([self.AwithEq(:,1:n);self.cwithEq(:,1:n)],[eqError;costError]);
+                xf = LinEqSol([self.prgWithEq.A(:,1:n);self.prgWithEq.c(:,1:n)],[eqError;costError]);
                 x = [xf;x];
 
-                if (norm(self.AwithEq*x-self.bwithEq) > eps)
-                    warning('Recovery of free dual variables failed');
+                if (norm(self.prgWithEq.A*x-self.prgWithEq.b) > eps)
+                    warning('frlib: recovery of free dual variables failed.');
                     freeRecovFailed = 1; 
-                end               
-            end
-            
-            U = self.Uarry; V = self.Varry;
-            solMap = self.dualEqMap;
-            coneOrig = coneBase(self.Korig);
-                        
-            cone = coneBase(self.KwithEq);
-            s = cone.GetIndx('s',1);
-            sBar = x(s:end);
-            sHat = x(solMap.shat_vvt.s:solMap.shat_vvt.e);
-
-            Kconj.s = cellfun(@(V)  size(V,2),V{end});
-            coneConj = coneBase(Kconj);
-            sHat = coneConj.InitSymmetric(sHat(:)');
-            
-            beta = x(solMap.beta_uvt.s:solMap.beta_uvt.e);
-              
-            xflqr = x(solMap.beta_uvt.e+1:s-1);            
-            if ~all(cellfun(@isempty,U))     
-                [x,x11m,x12m,~] = coneOrig.ConjBlock2by2(sBar,sHat,beta/2,U{end},V{end});
-            else
-                x = sBar;
+                end        
+                
             end
 
-            x(1:length(xflqr)) = xflqr;
+            dimSpanConj = size(self.faces{end}.spanConjFace,1);
+            dimRes = size(self.faces{end}.resSubspace,1);
+
+			R = x(1:dimSpanConj);
+            Q = self.faces{end}.coneToFace'*x(dimSpanConj+dimRes+1:end);
+            Z = x(dimSpanConj+1:dimRes+dimSpanConj);
+
+            xperp = self.faces{end}.resSubspace'*Z(:)+self.faces{end}.spanConjFace'*R(:);
+            x = Q(:)' + xperp(:)';
+          
+
             xr = x; 
             x0 = xr;
      
@@ -219,19 +156,10 @@ classdef reducedDualPrg < frlibPrg
                return 
             end
             
-            
-            
-            if length(U) == 1
-                for i=1:length(x12m)
-                    if norm(x12m{i}'*NullQR(x11m{i}),'fro') > eps
-                        success = 0;
-                        return
-                    end         
-                end
-            end
+   
 
-            ComputeDelta = @(t,dir) dir(:)*t;
-            [xr,success] = solUtil.LineSearch(x0,U,self.Sarry,self.Korig,ComputeDelta,eps); 
+            ComputeDelta = @(t,redCert) t*redCert.S;
+            [xr,success] = solUtil.LineSearch(x0,self.faces,ComputeDelta,eps);  
             
         end
    
@@ -239,38 +167,13 @@ classdef reducedDualPrg < frlibPrg
 
 end
 
-function [DualEqA,DualEqC,Tuu,Tuv,Tvv,solMap] = GetDualEqs(cone,U,V,A,c)
-
-    Tuu = cone.BuildMultMap(U,U);
-    Tuv = cone.BuildMultMap(U,V);
-    Tvv = cone.BuildMultMap(V,V);
-
-    [~,e] = cone.flqrIndx();
-    Tvv = Tvv(e+1:end,:);
-    Tuv = Tuv(e+1:end,:);
-   
-    Kconj.s = cellfun(@(V)  size(V,2),V);
-    coneConj = coneBase(Kconj);
-    DualEq1 = coneConj.UpperTri(A*Tvv');
-    DualEq2 = A*Tuv';
-
-    solMap.shat_vvt.s = 1;
-    solMap.shat_vvt.e = solMap.shat_vvt.s + size(DualEq1,2)-1;
-    solMap.beta_uvt.s = solMap.shat_vvt.e + 1; 
-    solMap.beta_uvt.e = solMap.beta_uvt.s + size(DualEq2,2)-1;
-
-    DualEqA = [DualEq1,DualEq2];
-    DualEqC = [coneConj.UpperTri(c(:)'*Tvv'),c(:)'*Tuv'];
-
-end
-
-function [A_presolve,b_presolve,c_presolve,T,y0] = PreSolveDualEqs(Deq,feq,A,b,c)
+function [redPrgData,T,y0] = PreSolveDualEqs(Deq,feq,A,b,c)
     
     [y0,T] = LinEqSol(Deq',feq');
    
-    A_presolve = T'*A;
-    c_presolve = c(:) - A'*y0;
-    b_presolve = T'*b;
+    redPrgData.A = T'*A;
+    redPrgData.c = c(:) - A'*y0;
+    redPrgData.b = T'*b;
 
 end
 
