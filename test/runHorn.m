@@ -18,10 +18,10 @@ function pass = runHorn(opts)
         p = frlibPrg(A,b,c,K);
         xorig = sedumi(A,b,c,K,pars);
         costRef = c'*xorig;
-
-        pred = p.ReducePrimal('dd');
         opts.useQR = 1;
-        [xr,yr] = pred.Solve(opts);
+        
+        pred = p.ReducePrimal('dd',opts);
+        [xr,yr] = pred.Solve();
         x = pred.Recover(xr,yr);
         
         costRed = c'*x;
@@ -65,14 +65,11 @@ function pass = runHorn(opts)
             xerror('fail')
         end
 
-
         pass(end+1) = all(drednoeq.K.s == pred.K.s) & d.CheckDual(y,eps) ...
             & p.CheckPrimal(x,eps) && all(dred.K.s < d.K.s);   
         if (pass(end) == 0)
             xerror('fail')
         end
-
-
 
     end
 end

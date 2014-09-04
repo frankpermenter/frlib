@@ -1,7 +1,8 @@
 function frlibTests
     testPass = [];
     opts.useQR = 1;
-    opts.verbose = 0;
+
+    eps = 10^-4;
     
     load hybridLyap.mat;
     A = A';
@@ -9,36 +10,21 @@ function frlibTests
 
     %diagonal
     TestDisplay('Checking reduction of primal (diagonal)');
+    prgD = prg.ReducePrimal('d');
     prgD = prg.ReducePrimal('d',opts);
     PrintStats(prgD);
     
-    [x,y] = prgD.Solve(opts);   
-    x0 = prgD.Recover(x,y);
-    pass  = prg.CheckPrimal(x0,10^-4);
+
+    pass = TestSolution(prg,prgD,eps);
     testPass(end+1) = pass & all(prgD.K.s == [6 56 11 1 1 0 11 1 1 0 11 11]);
-    if ~(testPass(end))
-        error('Test case failed')
-    else
-       TestDisplay('Pass') 
-    end
 
     %diagonally dominant
     TestDisplay('Checking reduction of primal (diagonally dominant)');
     prgDD = prgD.ReducePrimal('dd',opts);
     PrintStats(prgDD);
     
-    [x,y] = prgDD.Solve(opts);
-    [x1,y1] = prgDD.Recover(x,y);
-    pass  = prgD.CheckPrimal(x1,10^-4);
-    testPass(end+1) = pass;
+    testPass(end+1) = TestSolution(prgD,prgDD,eps);
 
-    x2 = prgD.Recover(x1,y1);
-    pass = prg.CheckPrimal(x2,10^-4);
-    testPass(end+1) = pass;
-
-    if ~(testPass(end))
-        error('Test case failed')
-    end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     TestDisplay('Checking reduction of dual');
@@ -47,24 +33,13 @@ function frlibTests
     prgDD = prg.ReduceDual('dd');
     PrintStats(prgDD);
     
-    [~,y] = prgDD.Solve(opts);
-
-    testPass(end+1)  = prg.CheckDual(y,10^-4) & prgDD.K.s == 2;
-
-    if ~(testPass(end))
-        error('Test case failed')
-    end
-
+    testPass(end+1) = TestSolution(prg,prgDD,eps);
+    testPass(end+1) = prgDD.K.s == 2;
 
     prgD = prg.ReduceDual('d');
     PrintStats(prgD);
-    [~,y] = prgD.Solve(opts);
-    
-    testPass(end+1)  = prg.CheckDual(y,10^-4) & prgDD.K.s == 2;
-
-    if ~(testPass(end))
-        error('Test case failed')
-    end
+    testPass(end+1) = TestSolution(prg,prgD,eps);
+    testPass(end+1)  =  prgD.K.s == 2;
 
 
     pass = runHorn(opts);
@@ -80,6 +55,8 @@ end
 function pass = runHorn(opts)
     TestDisplay('Checking primal and dual reductions (horn form)');
     pass = [];
+    eps = 10^-4;
+ 
     for i=2:5
         
         load(['horn',num2str(i),'.mat']);
@@ -87,21 +64,46 @@ function pass = runHorn(opts)
         pred = p.ReducePrimal('dd',opts);
         PrintStats(pred);
         
-        [x,y] = pred.Solve(opts);
-        [x,y] = pred.Recover(x,y);
+        pass(end+1) = TestSolution(p,pred,eps);
   
         load(['hornD',num2str(i),'.mat']);
         d = frlibPrg(A,[],c(:),K);
         dred = d.ReduceDual('dd',opts);
         PrintStats(dred);
-        [xr,yr] = dred.Solve(opts);
-        [~,y] = dred.Recover(xr,yr);
-
-        eps = 10^-4;
-        pass(end+1) = all(dred.K.s == pred.K.s) & d.CheckDual(y,eps) ...
-            & p.CheckPrimal(x,eps) && all(dred.K.s < d.K.s);
+        pass(end+1) = TestSolution(d,dred,eps);
+        
       
+        pass(end+1) = all(dred.K.s == pred.K.s) & (dred.K.s < d.K.s);
+      
+
+        
     end
+    
+end
+
+function pass = TestSolution(prg,prgR,eps)
+
+    if ~isempty(which('sedumi'));
+        pars.fid = 0;
+        fprintf('\tSolving reduced problem...\n');
+        [xr,yr] = prgR.Solve(pars);
+        [x,y] = prgR.Recover(xr,yr);
+        
+        if isa(prgR,'reducedPrimalPrg')
+            pass = prg.CheckPrimal(x,eps);
+            pass = pass & prgR.faces{end}.InLinearSpan(x,eps);
+        end
+
+        if isa(prgR,'reducedDualPrg')
+            pass = prg.CheckDual(y,eps);
+            pass = pass & prgR.faces{end}.InLinearSpan(prg.c-y'*prg.A,eps);
+        end
+ 
+    else
+        pass = 1; 
+    end
+    
+    pass = pass & prgR.VerifyRedCert();
     
 end
 
@@ -113,9 +115,9 @@ end
 
 function TestDisplay(msg)
    fprintf(['\n']);
-   display('**************************************************************');
-   fprintf([msg,'\n']);
-   display('**************************************************************');
+   display('--------------------------------------------------------------');
+   fprintf(['\t',msg,'\n']);
+  display('--------------------------------------------------------------');
 end
 
 

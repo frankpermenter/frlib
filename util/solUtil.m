@@ -144,6 +144,7 @@ classdef solUtil
         end
                  
         function pass = CheckLor(x,eps)
+            
             pass = 1;
             if length(x) > 0
                 if x(1) - norm(x(2:end)) > -eps
@@ -152,79 +153,37 @@ classdef solUtil
                     pass = 0;
                 end
             end
+            
         end
 
         function pass = CheckPSD(x,eps)
-            if issparse(x)
-               eigf = @eigs;
-            else
-               eigf = @eig; 
-            end
-            if (min(eigf(x)) > -eps) 
+            
+            x = full(x);
+            if (min(eig(x)) > -eps) 
                 pass = 1;
             else
                 pass = isempty(x);
             end
-        end
-        
-        
-        function pass = CheckInFace(x,U,K,eps)
-            
-            x = full(x);
-            cone = coneBase(K);
-            Kf = K;
-            if (~isempty(U))
-                Tuu = cone.BuildMultMap(U,U);
-                xface = Tuu*x(:);
-                Kf.s = cellfun(@(x) size(x,2), U);
-            else
-                xface = x(:);
-            end
-                 
-            face = coneBase(Kf);
-            
-            for i=1:length(Kf.s)
-                [s,e] = face.GetIndx('s',i);
-
-                xtest = solUtil.mat(xface(s:e));
-
-                if (min(eig(xtest)) > -eps) 
-                    pass(i) = 1;
-                else
-                    pass(i) = isempty(xtest);
-                end
-            
-            end
-            
-            pass = all(pass);
             
         end
         
                                           
-        function [xr,success,deltas] = LineSearch(x,U,redCerts,Korig,ComputeDelta,eps)
-            fail = [];
-
-            for i=length(U):-1:1
+        function [xr,success,deltas] = LineSearch(x,faces,ComputeDelta,eps)
+            
+            fail = []; xr = x; deltas = [];
+            for i=length(faces):-1:2
 
                 fail(i) = 1;
-                if (i >= 2)
+                delta = 0.0;
 
-                    Uface = U{i-1};
-
-                else
-
-                    Uface = [];
-
-                end
-
-               delta = 0.0;
-                
-               %rewrite this as a gevp?
-               for k = 1
+                %rewrite this as a gevp?
+                for k = 1:100
                     deltas(i) = delta;
-                    deltaX = ComputeDelta(delta,redCerts{i});
+                    deltaX = ComputeDelta(delta,faces{i}.redCert);
+                    
                     xr = x(:)+deltaX(:);
-                    feas = solUtil.CheckInFace(xr,Uface,Korig,eps);
+                  
+                    feas = faces{i-1}.InDualCone(xr,eps);
                     if (feas == 0)
                         delta = delta+1;
                     else
@@ -232,31 +191,14 @@ classdef solUtil
                         fail(i) =  0;
                         break;
                     end
-               end
+                end
                
             end
             
-           success = ~any(fail == 1);
+            success = ~any(fail == 1);
             
         end
-          
-        function pass = CheckNullSpaceCondition(x0,K,Kface,U,V)        
-            
-            pass = 1;
-            cone = coneBase(K);        
-            ct = cone.CrossTerms(x0,U{end},V{end});
-            
-            Tuu = cone.BuildMultMap(U,V);
-            
-            UtsU = Tuu*x0';
-            
-            for i=1:length(ct)
-                if (ct*NullQR(UtsU))
-                    pass = 0;
-                end
-            end
-            
-        end
+
 
         function y = mat(x)
             %emulates SeDuMi's function mat()

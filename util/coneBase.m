@@ -119,6 +119,10 @@ classdef coneBase
            y = length(self.indxNNeg) > 0;
         end
 
+        function y = NumFlqrVars(self)
+           [s,e] = self.flqrIndx();
+           y = max(0,e-s+1);
+        end
 
         function indx =  LowerTriIndx(self)
 
@@ -227,7 +231,7 @@ classdef coneBase
                    
            s = 1;
            e = max([self.Kend.f;self.Kend.l;self.Kend.r(:);self.Kend.q(:);0]);
-            
+  
         end
         
         function [startPos,endPos]= GetIndx(self,cone,num)
@@ -242,29 +246,6 @@ classdef coneBase
             end
 
         end
-
-
-        function [T,s] = ConjByU(self,U,num)
-
-            [T,s] = PrePostMultByUandVt(U,U)
-
-        end
-
-        function [T,s] = PrePostMultByUandVt(self,U,V,num)
-
-            if exist('num','var')  
-                T = BuildConjMap(U,V);
-            else
-                T = speye(self.GetIndx('s',1)-1);
-
-                for i=1:length(U)
-                    T = blkdiag(T,BuildPrePostMultMap(U{i},V{i}));
-                    s(i) = size(U{i},2);
-                end  
-            end
-
-        end
-
 
         function [y] = ColIndx(self,num,colIndx)
 
@@ -367,142 +348,9 @@ classdef coneBase
 
             end
 
-
         end
 
-
-        function T = BuildMultMap(self,U1,U2,transposeU)
-            %if tranpose U == 0): Computes map (Tq)(:) = (U1 q U2') (:)
-            %else: Computes map (Tq)(:) = (U1' q U2) (:) 
-            
-            if (~exist('transposeU','var'))
-               transposeU = 1;
-            end
-            
-            if (transposeU)
-               dimForSizeCalc = 2;
-               dimForErrorCheck = 1;
-            else
-               dimForSizeCalc = 1; 
-               dimForErrorCheck = 2;
-            end
-            
-
-            if ~all(cellfun(@(x)  size(x,dimForErrorCheck),U2) == self.K.s)
-               error('size of inputs do not match cone sizes') 
-            end
-            
-            rarry = [];carry=[];varry=[];
-            [s,e] = self.flqrIndx();
-
-            numNonPSDVar = e-s+1;  
-            numPSDVarAfterConj_1 = cellfun(@(x)  size(x,dimForSizeCalc),U1);   
-            numPSDVarAfterConj_2 = cellfun(@(x)  size(x,dimForSizeCalc),U2);   
-            numPSDVarAfterConj = sum(numPSDVarAfterConj_2.*numPSDVarAfterConj_1);
-            
-            %don't do anything to non PSD vars
-            rarry = [s:e]';
-            carry = [s:e]';
-            varry = ones(size(rarry,1),1);
-            
-
-            indx = length(s:e)+1;
-            for i=1:length(U1)
-                s = self.GetIndx('s',i);
-                if any(size(U1{i}) > 0) && any(size(isempty(U2)) > 0)
-                    
-                    if (transposeU == 1)
-                        temp = BuildConjMap(U1{i}',U2{i}'); 
-                    else
-                        temp = BuildConjMap(U1{i},U2{i});
-                    end
-
-                    [r,c,v] = find(temp);
-                    r = r(:)+indx-1;
-                    c = c(:)+s-1;
-                    v = v(:);
-
-                    rarry = [rarry;r];
-                    carry = [carry;c];
-                    varry = [varry;v];
-
-                    indx = indx+size(temp,1);
-                    
-                end
-    
-            end
-           
-            T = sparse(rarry,carry,varry,numNonPSDVar+numPSDVarAfterConj,self.NumVar);
-            
-        end
-        
-        function crossTerm = CrossTerms(self,x,U,V)
-            
-            Tuv = self.BuildMultMap(V,U);
-            VtXU = Tuv*x';
-            s = 1;
-            crossTerm = {};
-            
-            for i=1:length(self.K.s)
-
-                numColV = size(V{i},2);
-                numColU = size(U{i},2);
-
-                if (numColU + numColV == self.K.s(i))
-                    xtemp = reshape(VtXU(s:s+numColV*numColU-1),numColV,numColU);
-                    crossTerm{end+1} = xtemp;
-                else
-                    error(['numcol(U)+numcol(V) does not equal cone size(',num2str(self.K.s(i)),')']);
-                end
-
-            end
-        
-        end
-        
-        function [x,x11m,x12m,x22m] = ConjBlock2by2(self,x11,x22,x12,U,V)
-            
-            s = self.GetIndx('s',1);
-            x = sparse(1,s-1);
-            s1 = 1; s2 = 1; s3 = 1;
-            
-            x11m = {}; x12m = {}; x22m = {};
-                         
-            for i=1:length(self.K.s)
-                
-                numColV = size(V{i},2);
-                numColU = size(U{i},2);
-                
-                if (numColU + numColV == self.K.s(i))
-                    x11i = solUtil.mat(x11(s1:s1+numColU*numColU-1));
-                    x22i = solUtil.mat(x22(s2:s2+numColV*numColV-1));
-                    x22i = (x22i + x22i')/2;
-                    x12i = reshape(x12(s3:s3+numColV*numColU-1),numColU,numColV);
-                else
-                    error(['numcol(U)+numcol(V) does not equal cone size(',num2str(self.K.s(i)),')']);
-                end
-     
-                s1 = s1+length(x11i(:));
-                s2 = s2+length(x22i(:));
-                s3 = s3+length(x12i(:));
-                  
-                x11m{i} = x11i;
-                x22m{i} = x22i;
-                x12m{i} = x12i;
-                
-                vx12u = U{i}*x12i*V{i}';
-                temp = U{i}*x11i*U{i}'+V{i}*x22i*V{i}'+vx12u+vx12u';
-                x = [x,temp(:)'];
-                if max(max(abs((temp)'-(temp)))) > 10^-3
-                    error('not sym')
-                end
-                
-            end
-            
-        end
-
+    end
 
 end
 
-
-
-end

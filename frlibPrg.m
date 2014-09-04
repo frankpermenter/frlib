@@ -47,127 +47,39 @@ classdef frlibPrg
             c = self.cone.Symmetrize(c(:)'); 
 
             self.A = A;
-            self.c = c;
-            self.b = b;
+            self.c = c(:)';
+            self.b = b(:);
             self.K = self.cone.K;
             self.defaultSolveOpts = [];
             self.defaultRedOpts = [];
             
         end
 
-        function [x,y,info] = Solve(self,opts)
-            
-            if ~exist('opts','var')
-                opts = self.defaultSolveOpts;
-            end
-            
-            if isfield(opts,'useQR')
-                useQR = opts.useQR;
-            else
-                useQR = 0;
-            end
-                     
-            if isfield(opts,'verbose')
-                verbose = opts.verbose;
-            else
-                verbose = 1;
-            end
-             
-            if isfield(opts,'removeDualEq') 
-                removeDualEq = opts.removeDualEq;
-            else
-                removeDualEq = 0;
-            end
-            
-            [A,b,Ty1] = CleanLinear(self.A,self.b,useQR); 
-            y0 = 0;
+        function [x,y,info] = Solve(self,pars)
 
-            if removeDualEq && self.K.f > 0 && any(self.K.s > 0)
-                
-                [A,b,c,K,Ty2,y0] = RemoveDualEquations(A,b,self.c,self.K);
-                y0 = Ty1*y0;
-                Ty = Ty1*Ty2; 
-                
-            else
-
-                removeDualEq = 0;
-                c = self.c;
-                K = self.K;
-                Ty = Ty1;
-                
+            if ~exist('pars','var')
+                pars = [];
             end
+
+            x = []; y = []; info = [];
             
-            if size(A,1) ~= 0
-                
-                if (verbose == 1)
-                    pars.fid = 1;
+            if (size(self.A,1) > 0)
+            
+                if ~isempty(which('sedumi'))
+                   [x,y,info] = sedumi(self.A,self.b,self.c,self.K,pars);
                 else
-                    pars.fid = 0;
+                   error('SeDuMi not found.'); 
                 end
-
-                [x,y,info] = sedumi(A,b,c,K,pars);
-                y = Ty*y + y0;
-                
-            else
-                
-                x = sparse(size(A,2),1); y = 0;
-                y = y0;
-                
-            end
-
-            if removeDualEq
-                
-                indxNotFree = (self.K.f+1):size(self.A,2);
-                indxFree = 1:self.K.f;
-                costNotFree = self.c(indxNotFree);
-                costError = (c(:)-costNotFree(:))'*x;
-                eqError = self.b-self.A(:,indxNotFree)*x;
-
-                xf = LinEqSol([self.A(:,indxFree);self.c(indxFree)],[eqError;costError]);
-                x = [xf;x];
-                
-            end
-
-        end
-
-        function [x,y] = SolveMosek(self)
-                
-            [A,b,T] = CleanLinear(self.A,self.b); 
-            [Ar,br,cr,Kr,Tr,y0] = RemoveDualEquations(A,b,self.c,self.K); 
-            Z = coneBase(Kr);
-            A = Z.Desymmetrize(Ar);
-            c = Z.Desymmetrize(cr(:)');
-            info = [];
-
-            K = Kr;
-            if ~isfield(K,'f') 
-                K.f = 0;
-            end
-
-            if ~isfield(K,'l') 
-                K.l = 0;
-            end
-
-            if ~isfield(K,'q') || all(K.q == 0)
-                K.q = [];
-            end
-
-            if ~isfield(K,'s') || all(K.s == 0)
-               K.s = [];
-            else
-               K.s = K.s(K.s ~= 0); 
-            end
-
-            if ~isfield(K,'r') || all(K.r == 0)
-                K.r = [];
-            end
-
-            [x,y] = spot_mosek(A,br,c(:),K,struct('verbose',1));
-
-            y = T*(Tr*y+y0);
             
-        end 
-      
+            else
+
+                x = sparse(size(self.A,2),1); y = 0;
+                y = 0;
+
+            end
+            
+        end
+     
         function pass = CheckSolution(self,x,y,eps)
             
            pass = 1;
@@ -193,49 +105,20 @@ classdef frlibPrg
             
             procReduce = [];
             if (strcmp(method,'d'))
-                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralPrimIter(self,U,V,'d',cone,Kface);
+                procReduce = @(self,face) facialRed.PolyhedralPrimIter(self,face,'d');
             end
 
             if strcmp(method,'dd')
-                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralPrimIter(self,U,V,'dd',cone,Kface);
+                procReduce = @(self,face) facialRed.PolyhedralPrimIter(self,face,'dd');
             end
-                                 
-            if isempty(procReduce)
-                error('Valid approximation not specified.');
-            end
-
+            
             if ~exist('opts','var')
                 opts = self.defaultRedOpts;
-            end
-            
-            maxIter =  ParseRedOpts(opts);
-            
-            Kface = self.K;
-            U = cell(1,length(self.K.s)); V = U;
-            Uarry = {};  Varry = {};  Sarry = {}; Karry = {}; yRedarry = {}; redTimeArry={};
-
-            iter = 1;
-            while (1)
-                 
-                [success,U,V,Kface,S,yRed,timeRed] = procReduce(self,U,V,self.cone,Kface);
-                if (success)
-                    Uarry{end+1} = U;
-                    Varry{end+1} = V;
-                    Sarry{end+1} = S;
-                    yRedarry{end+1} = yRed;
-                    Karry{end+1} = Kface;
-                end
-
-                redTimeArry{end+1} = timeRed;
-                if success == 0 || iter >= maxIter
-                    break;
-                end
-                
-                iter = iter + 1;
-                
-            end
-
-            prg = reducedPrimalPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,yRedarry,redTimeArry,opts);
+            end                          
+                    
+            frlibPrg.CheckInputs(procReduce);
+            faces = self.Reduce(procReduce,opts);
+            prg = reducedPrimalPrg(self,faces,opts);
 
         end
         
@@ -243,62 +126,83 @@ classdef frlibPrg
     
             procReduce = [];
             if (strcmp(method,'d'))
-                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'d',cone,Kface);
+                procReduce = @(self,face) facialRed.PolyhedralDualIter(self,face,'d');
             end
 
             if strcmp(method,'dd')
-                procReduce = @(self,U,V,cone,Kface) facialRed.PolyhedralDualIter(self,U,V,'dd',cone,Kface);
+                procReduce = @(self,face) facialRed.PolyhedralDualIter(self,face,'dd');
             end
+            
+            if ~exist('opts','var')
+                opts = self.defaultRedOpts;
+            end
+              
+            frlibPrg.CheckInputs(procReduce);
+            faces = self.Reduce(procReduce,opts);
+            prg = reducedDualPrg(self,faces,opts);
+            
+        end
+
+    end
+     
+    methods(Access=protected)
+        
+       function faces = Reduce(self,procReduce,opts) 
+                
+            maxIter =  frlibPrg.ParseRedOpts(opts);
+           
+            currentFace = faceBase(self.cone,self.cone.K);
+            faces = {currentFace};
+            
+            iter = 1;
+
+            while (1)
+
+                [success,currentFace] = procReduce(self,currentFace);
+                if (success)
+                    faces{end+1} = currentFace;
+                end
+
+                if success == 0 || iter >= maxIter
+                    break;
+                end
+
+                iter = iter + 1;
+
+            end
+
+        end
+       
+    end
+    
+    methods(Static,Access=protected)
+        
+        function [maxIter] = ParseRedOpts(opts)
+
+            if isfield(opts,'maxIter')
+                maxIter = opts.maxIter;
+            else
+                maxIter = 10^8;
+            end
+
+        end
+
+
+        function CheckInputs(procReduce)
 
             if isempty(procReduce)
                 error('Valid approximation not specified.');
             end
 
-            if ~exist('opts','var')
-                opts = self.defaultRedOpts;
-            end
-            
-            maxIter = ParseRedOpts(opts);
-                
-            Kface = self.K;
-            U = cell(1,length(self.K.s)); V = U;
-            Uarry = {}; Sarry = {}; Karry = {}; Varry = {}; redTimeArry={};
-
-            iter = 1;
-            while (1)
-                
-                [success,U,V,Kface,S,timeRed] = procReduce(self,U,V,self.cone,Kface);
-                if (success)
-                    Uarry{end+1} = U;
-                    Sarry{end+1} = S;
-                    Varry{end+1} = V;
-                    Karry{end+1} = Kface;
-                end
-
-                redTimeArry{end+1} = timeRed;
-                if success == 0 || iter >= maxIter
-                    break;
-                end
-                
-                iter = iter + 1;
-                
-            end
-
-            prg = reducedDualPrg(self.A,self.b,self.c,self.K,Karry,Uarry,Varry,Sarry,redTimeArry,opts);
-            
         end
- 
-    end
 
+    end
+    
 end
 
-function [maxIter] = ParseRedOpts(opts)
 
-    if isfield(opts,'maxIter')
-        maxIter = opts.maxIter;
-    else
-        maxIter = 10^8;
-    end
 
-end
+
+
+
 
