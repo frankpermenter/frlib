@@ -118,16 +118,15 @@ classdef reducedDualPrg < reducedPrg
 
                 n = self.faces{end}.spanConjFaceDim + self.faces{end}.resSubspaceDim;
                
-                costError = (self.c(1:end)-self.prgWithEq.c(n+1:end))*x;
+                costRef = self.c*x;
+                costError = costRef-self.prgWithEq.c(n+1:end)*x;
                 eqError = self.prgWithEq.b-self.prgWithEq.A(:,n+1:end)*x;
                 
                 xf = LinEqSol([self.prgWithEq.A(:,1:n);self.prgWithEq.c(:,1:n)],[eqError;costError]);
                 x = [xf;x];
 
-                if (norm(self.prgWithEq.A*x-self.prgWithEq.b) > eps)
-                    warning('frlib: recovery of free dual variables failed.');
-                    freeRecovFailed = 1; 
-                end        
+                freeRecovFailed = norm(self.prgWithEq.A*x-self.prgWithEq.b) > eps;
+                freeRecovFailed = freeRecovFailed & norm(self.prgWithEq.c*x-costRef) > eps;        
                 
             end
 
