@@ -18,7 +18,6 @@ classdef reducedDualPrg < reducedPrg
                 opts.removeDualEq = 0;
             end
 
-
             if faces{end}.isProper
                  
                 y0 = 0; Ty = speye(size(unreducedPrg.A,1));
@@ -60,11 +59,8 @@ classdef reducedDualPrg < reducedPrg
            
             self@reducedPrg(redPrg.A,redPrg.b,redPrg.c,redPrg.K);
             self.faces = faces;
-            self.unreducedPrg = unreducedPrg;
-
-           
+            self.unreducedPrg = unreducedPrg;    
             self.prgWithEq = prgWithEq;
-
             self.defaultSolveOpts = [];
             self.opts = opts;
             self.Ty = Ty;
@@ -86,8 +82,7 @@ classdef reducedDualPrg < reducedPrg
             end
   
         end
-      
-        
+             
         function yr = RecoverDual(self,y)
                     
             if (self.noReductions)
@@ -102,8 +97,7 @@ classdef reducedDualPrg < reducedPrg
             end
             
         end
-        
-        
+                
         function [xr,x0,success] = RecoverPrimal(self,x,eps)
             
             if ~exist('eps','var')
@@ -124,7 +118,7 @@ classdef reducedDualPrg < reducedPrg
 
                 n = self.faces{end}.spanConjFaceDim + self.faces{end}.resSubspaceDim;
                
-                costError = (self.prgWithEq.c(n+1:end)-self.c(1:end))*x;
+                costError = (self.c(1:end)-self.prgWithEq.c(n+1:end))*x;
                 eqError = self.prgWithEq.b-self.prgWithEq.A(:,n+1:end)*x;
                 
                 xf = LinEqSol([self.prgWithEq.A(:,1:n);self.prgWithEq.c(:,1:n)],[eqError;costError]);
@@ -147,7 +141,6 @@ classdef reducedDualPrg < reducedPrg
             xperp = self.faces{end}.resSubspace'*Z(:)+self.faces{end}.spanConjFace'*R(:);
             x = Q(:)' + xperp(:)';
           
-
             xr = x; 
             x0 = xr;
      
@@ -156,8 +149,6 @@ classdef reducedDualPrg < reducedPrg
                return 
             end
             
-   
-
             ComputeDelta = @(t,redCert) t*redCert.S;
             [xr,success] = solUtil.LineSearch(x0,self.faces,ComputeDelta,eps);  
             
