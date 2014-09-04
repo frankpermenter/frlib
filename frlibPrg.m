@@ -115,8 +115,7 @@ classdef frlibPrg
             if ~exist('opts','var')
                 opts = self.defaultRedOpts;
             end                          
-            
-            
+                    
             frlibPrg.CheckInputs(procReduce);
             faces = self.Reduce(procReduce,opts);
             prg = reducedPrimalPrg(self,faces,opts);
@@ -144,13 +143,8 @@ classdef frlibPrg
             
         end
 
-
-  
-
- 
     end
-    
-    
+     
     methods(Access=protected)
         
        function faces = Reduce(self,procReduce,opts) 
@@ -204,8 +198,6 @@ classdef frlibPrg
 
     end
     
-    
-
 end
 
 
