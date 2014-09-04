@@ -144,6 +144,7 @@ classdef solUtil
         end
                  
         function pass = CheckLor(x,eps)
+            
             pass = 1;
             if length(x) > 0
                 if x(1) - norm(x(2:end)) > -eps
@@ -152,19 +153,18 @@ classdef solUtil
                     pass = 0;
                 end
             end
+            
         end
 
         function pass = CheckPSD(x,eps)
-            if issparse(x)
-               eigf = @eigs;
-            else
-               eigf = @eig; 
-            end
-            if (min(eigf(x)) > -eps) 
+            
+            x = full(x);
+            if (min(eig(x)) > -eps) 
                 pass = 1;
             else
                 pass = isempty(x);
             end
+            
         end
         
                                           
@@ -198,24 +198,7 @@ classdef solUtil
             success = ~any(fail == 1);
             
         end
-          
-        function pass = CheckNullSpaceCondition(x0,K,Kface,U,V)        
-            
-            pass = 1;
-            cone = coneBase(K);        
-            ct = cone.CrossTerms(x0,U{end},V{end});
-            
-            Tuu = cone.BuildMultMap(U,V);
-            
-            UtsU = Tuu*x0';
-            
-            for i=1:length(ct)
-                if (ct*NullQR(UtsU))
-                    pass = 0;
-                end
-            end
-            
-        end
+
 
         function y = mat(x)
             %emulates SeDuMi's function mat()

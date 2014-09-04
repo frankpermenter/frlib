@@ -28,6 +28,10 @@ classdef coneApprox < coneBase
                     [r,c,v] = find(self.matsFromSubMat_i(U,i));
                 end
                 
+                if ~isempty(rarry)
+                    r =  r+max(rarry);
+                end
+                
                 rarry = [rarry;r(:)];
                 carry = [carry;c(:)];
                 varry = [varry;v(:)];
@@ -39,6 +43,7 @@ classdef coneApprox < coneBase
             else
                 mats = [];
             end
+            
         end
 
         function extR = extRaysDD(self)

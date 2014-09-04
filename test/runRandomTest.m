@@ -4,7 +4,7 @@ function runRandomTest
     K.s =  3;
     rankS = 1;%floor(2*rand(1))+2;
     numEq = floor(2*rand(1))+2;
-    eps = 10^-8;
+    eps = 10^-4;
 
     [A,b,c,S] = RandomPrimalTestPSDCase(K,numEq,rankS,1);
     fr = frlibPrg(A,b,c,K);

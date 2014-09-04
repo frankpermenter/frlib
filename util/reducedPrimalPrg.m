@@ -44,9 +44,6 @@ classdef reducedPrimalPrg < reducedPrg
             end
 
             self@reducedPrg(Ar,br,cr,Kr);
-
-         
-            
             self.unreducedPrg = unreducedPrg;
             
            

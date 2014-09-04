@@ -170,63 +170,7 @@ classdef facialRed
 
         end
                  
-        function [success,U,V,Kface,redCert,yRed,timeRed] = SDDPrimIter(self,face,cone)
-                 
-            coneFace = coneBase(face.K);
-            prg = spotsosprog;
-            m = size(self.A,1);
-            redCert = []; yRed = []; timeRed = [];
-            
-            if ~all(cellfun(@isempty,U))     
-                Tuu = cone.BuildMultMap(U,U);
-                A = self.A*Tuu';
-            else
-                A = self.A;
-            end
-            
-            
-            [prg,u] = prg.newFree(m);
-            prg = prg.withEqs(u'*self.b);
-            S = sparse(1,coneFace.Kstart.s(1)-1);
-            for i=1:length(coneFace.K.s)  
-                if (coneFace.K.s(i) > 1 )
-                    [prg,Stemp] = prg.newSDD(coneFace.K.s(i));   
-                    S = [S,Stemp(:)'];
-                else
-                    [prg,Stemp] = prg.newPos(coneFace.K.s(i)); 
-                     S = [S,Stemp(:)'];
-                end
-            end
-            
-            prg = prg.withEqs(S-u'*A);
-            tr = sum(S(coneFace.indxNNeg));
-            prg = prg.withEqs(tr-1);
-            
-            try
-
-                tic
-                sol = prg.minimize(0,@spot_mosek);
-                timeRed = toc;
-                redCert = double(sol.eval(S));
-                yRed =  double(sol.eval(u));
-                success = 1;
-
-            catch
-
-                success = 0;
-                redCert = [];
-                
-            end
-
-            if (success == 0)
-               return 
-            end
-            %Heuristic rounding
-            redCert(find(round(redCert*10^6)==0)) = 0;
-           
-            [U,V,Kface] = facialRed.Reduce(redCert,U,V,Kface);
-                
-        end 
+        
 
         function W = GetGenerators(Kface,type)
             

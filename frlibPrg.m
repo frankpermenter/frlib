@@ -48,7 +48,7 @@ classdef frlibPrg
 
             self.A = A;
             self.c = c(:)';
-            self.b = b;
+            self.b = b(:);
             self.K = self.cone.K;
             self.defaultSolveOpts = [];
             self.defaultRedOpts = [];

@@ -56,7 +56,7 @@ function pass = runHorn(opts)
     TestDisplay('Checking primal and dual reductions (horn form)');
     pass = [];
     eps = 10^-4;
-    
+ 
     for i=2:5
         
         load(['horn',num2str(i),'.mat']);
@@ -75,6 +75,8 @@ function pass = runHorn(opts)
       
         pass(end+1) = all(dred.K.s == pred.K.s) & (dred.K.s < d.K.s);
       
+
+        
     end
     
 end
