@@ -13,7 +13,7 @@ The code takes in a primal-dual SDP pair expressed using  SeDuMi formatted input
 To perform reductions, one specifies a  PSD approximation and the SDP (primal or dual) one wishes to reduce. A typical use case is given below:
 ```Matlab
 prg = frlibPrg(A,b,c,K);
-prgR = prg.ReducePrimal(`d');
+prgR = prg.ReducePrimal('d');
 [x_reduced,y_reduced] = prgR.Solve();
 [x,y,dual_recov_success] = prgR.Recover(x_reduced,y_reduced);
 
@@ -31,7 +31,7 @@ Reduction of the dual is similarly done:
 
 ```Matlab
 prg = frlibPrg(A,b,c,K);
-prgR = prg.ReduceDual(`d');
+prgR = prg.ReduceDual('d');
 [x_reduced,y_reduced] = prgR.Solve();
 [x,y,primal_recov_success] = prgR.Recover(x_reduced,y_reduced);
 ```
