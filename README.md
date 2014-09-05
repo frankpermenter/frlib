@@ -14,7 +14,7 @@ To perform reductions, one specifies a  PSD approximation and the SDP (primal or
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReducePrimal('d');
-[x_reduced,y_reduced] = prgR.Solve();
+[x_reduced,y_reduced] = sedumi(prgR.A,prgR.b,prgR.c,prgR.K);
 [x,y,dual_recov_success] = prgR.Recover(x_reduced,y_reduced);
 
 ```
@@ -32,7 +32,7 @@ Reduction of the dual is similarly done:
 ```Matlab
 prg = frlibPrg(A,b,c,K);
 prgR = prg.ReduceDual('d');
-[x_reduced,y_reduced] = prgR.Solve();
+[x_reduced,y_reduced] = sedumi(prgR.A,prgR.b,prgR.c,prgR.K);
 [x,y,primal_recov_success] = prgR.Recover(x_reduced,y_reduced);
 ```
 Note the call to 
