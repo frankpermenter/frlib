@@ -116,7 +116,7 @@ classdef frlibPrg
                 opts = self.defaultRedOpts;
             end                          
                     
-            frlibPrg.CheckInputs(procReduce);
+            frlibPrg.CheckInputs(procReduce,method);
             faces = self.Reduce(procReduce,opts);
             prg = reducedPrimalPrg(self,faces,opts);
 
@@ -137,7 +137,7 @@ classdef frlibPrg
                 opts = self.defaultRedOpts;
             end
               
-            frlibPrg.CheckInputs(procReduce);
+            frlibPrg.CheckInputs(procReduce,method);
             faces = self.Reduce(procReduce,opts);
             prg = reducedDualPrg(self,faces,opts);
             
@@ -188,10 +188,13 @@ classdef frlibPrg
         end
 
 
-        function CheckInputs(procReduce)
+        function CheckInputs(procReduce,method)
 
             if isempty(procReduce)
-                error('Valid approximation not specified.');
+                if isa(method,'char')
+                    method = ['''',method,''''];
+                end
+                error(['Specified approximation ',num2str(method),' not recognized. Use ''d'' or ''dd''.']);
             end
 
         end
