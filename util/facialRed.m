@@ -126,6 +126,8 @@ classdef facialRed
                 [newFace] = face.Intersect(sBarExtRay);
                 newFace.redCert.y = yRed;
                 newFace.redCert.S = yRed'*self.A;
+                newFace.redCert.extRays = sBarExtRay;
+                
             end
 
         end
