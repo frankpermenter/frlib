@@ -85,7 +85,7 @@ function pass = TestSolution(prg,prgR,eps)
 
     if ~isempty(which('sedumi'));
         pars.fid = 0;
-        fprintf('\tSolving reduced problem...\n');
+        fprintf(' Solving reduced problem...\n');
         [xr,yr] = prgR.Solve(pars);
         [x,y] = prgR.Recover(xr,yr);
         
@@ -115,9 +115,9 @@ end
 
 function TestDisplay(msg)
    fprintf(['\n']);
-   display('--------------------------------------------------------------');
+    display('-------------------------------------------------------------------------')
    fprintf(['\t',msg,'\n']);
-  display('--------------------------------------------------------------');
+   display('-------------------------------------------------------------------------')
 end
 
 

@@ -47,11 +47,21 @@ classdef reducedPrg < frlibPrg
             Korig = self.unreducedPrg.K;
    
             if  all(K.s == Korig.s)
-                display(sprintf('***frlib: No reductions found.***'));
+                display('-------------------------------------------------------------------------')
+                display('frlib: No reductions found.')
+                display('-------------------------------------------------------------------------')
             else
-                display(sprintf('***frlib: reductions found!*** Size of PSD constraint(s):'));
-                display([sprintf('\t'),'Before:',sprintf('\t'),sprintf('%d ',Korig.s)])
-                display([sprintf('\t'),'After:',sprintf('\t'),sprintf('%d ',K.s)])
+                display('-------------------------------------------------------------------------')
+                display('frlib: reductions found!')
+                display('-------------------------------------------------------------------------')
+                display(['  Dim PSD constraint(s) (original):  ',sprintf('%d ',Korig.s)])
+                display(['  Dim PSD constraint(s) (reduced):   ',sprintf('%d ',K.s)])              
+                if  self.opts.useQR == 0 && size(self.A,2) < size(self.A,1)
+                   display(' ')
+                   display('  Warning: Reduced problem has more equations than primal variables. This may ')
+                   display('  cause solver errors.  Perform reductions with opts.useQR = 1 to remove');
+                   display('  linearly dependent equations.');
+                end   
             end
 
         end

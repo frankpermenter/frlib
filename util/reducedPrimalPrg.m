@@ -24,15 +24,7 @@ classdef reducedPrimalPrg < reducedPrg
                 Kr = faces{end}.K;
 
                 [Ar,br,Ty] = CleanLinear(Ar,unreducedPrg.b,opts.useQR);
-                
-                if  opts.useQR == 0 && size(Ar,2) < size(Ar,1)
-                    if  opts.quiet == 0
-                        warning(['frlib: reduced problem has more equations '...
-                        'than primal variables.  Call Reduce(<approx>,opts) '..., 
-                        'with opts.useQR = 1 to remove linearly dependent equations.']); 
-                    end
-                end
-                
+                                
             else
 
                 Ar = unreducedPrg.A;
