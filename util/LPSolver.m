@@ -51,17 +51,21 @@ classdef LPSolver
                        
         end
         
+        
         function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
-            %This function is  MOSEK's linprog implementation
-            %modified to turn off basis id, 
-            %i.e. param.MSK_IPAR_INTPNT_BASIS = 0;
-            
-            defaultopt = mskoptimset;
-            options = mskoptimset(defaultopt,[]);
-          
-            [cmd,verb,param] = msksetup(1,options);
-            
+            param.MSK_IPAR_INTPNT_BASIS = 0;
+            param.MSK_IPAR_MAX_NUM_WARNINGS = 0;
+            param.MSK_DPAR_OPTIMIZER_MAX_TIME = -1;
+            param.MSK_IPAR_INTPNT_MAX_ITERATIONS = 400;
+            param.MSK_IPAR_MIO_MAX_NUM_BRANCHES = -1;
+            param.MSK_IPAR_LOG = 0;
+            param.MSK_IPAR_LOG_INTPNT = 0;
+            param.MSK_IPAR_LOG_SIM = 0;
+            param.MSK_IPAR_LOG_BI = 0;
+            param.MSK_IPAR_LOG_PRESOLVE = 0;
+            param.MSK_IPAR_INTPNT_BASIS = 0;
+
             f = c;
             A = Aineq;
             b = bineq;
@@ -70,10 +74,9 @@ classdef LPSolver
             l = lbnd;
             u = ubnd;
             n = length(f);
+            
             % Setup the problem that is feed into MOSEK.
             prob        = [];
-            [numineq,t] = size(A);
-            [numeq,t]   = size(B);
             prob.c      = reshape(f,n,1);
             prob.a      = [A;B];
             if ( isempty(prob.a) )
@@ -86,15 +89,8 @@ classdef LPSolver
             prob.blx    = l;
             prob.bux    = u;
             
-            if (~strcmp(options.Simplex,''))
-                prob.sol.bas.skx = repmat('UN', n, 1);
-                prob.sol.bas.skc = repmat('UN', numineq+numeq, 1);
-                prob.sol.bas.xx  = x0;
-            end
-            
-            clear f A b B c l u x0 options;
             param.MSK_IPAR_INTPNT_BASIS = 0;
-            
+            cmd = 'minimize info echo(0) statuskeys(1) symbcon';
             [rcode,res] = mosekopt(cmd,prob,param);
             
             if ( isfield(res,'sol') )
@@ -105,25 +101,34 @@ classdef LPSolver
                 end
             else
                 x = [];
-            end
-            
-            if nargout>1 & length(prob.c) == length(x)
-                fval = prob.c'*x;
+            end            
+              
+            if rcode==0 && isfield(res,'sol')
+                
+                if ( isfield(res.sol,'itr') )
+                    
+                    if (res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_OPTIMAL || ...
+                        res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_NEAR_OPTIMAL)
+                        flag = 1;
+                    elseif (res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_PRIM_INFEAS_CER || ...
+                        res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_NEAR_PRIM_INFEAS_CER)
+                        flag = -2;
+                    elseif (res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_DUAL_INFEAS_CER || ...
+                        res.sol.itr.solsta==res.symbcon.MSK_SOL_STA_NEAR_DUAL_INFEAS_CER)
+                        flag = -3;
+                    end
+                    
+                end
+                
             else
-                fval = [];
+                
+                flag = -999;
+                
             end
             
-            if nargout>2
-                flag = mskeflag(rcode,res);
-            end
-            
-            if nargout>3
-                output = mskoutput(res);
-            end
-            
-            infeas = flag == -2 | flag == -5;
+            infeas = flag == -2;
             numErr = ~infeas && flag ~= 1;
-                      
+                                
         end
         
         function [x,infeas,numErr] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
