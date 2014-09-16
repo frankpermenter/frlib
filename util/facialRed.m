@@ -99,7 +99,7 @@ classdef facialRed
         
         function [success,newFace,timeRed]  = PolyhedralPrimIter(self,face,gensOrType)
 
-            success = 0; newFace = []; redCert = []; timeRed = []; 
+            success = 0; newFace = []; timeRed = []; 
             
             W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
             numGens = size(W,1);
@@ -134,7 +134,7 @@ classdef facialRed
              
         function [success,newFace,timeRed] = PolyhedralDualIter(self,face,gensOrType)
 
-            success = 0; newFace = []; redCert = []; timeRed = []; 
+            success = 0; newFace = []; timeRed = []; 
             W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
             numGens = size(W,1);
             if numGens == 0, return, end
