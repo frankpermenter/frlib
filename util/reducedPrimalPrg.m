@@ -19,8 +19,8 @@ classdef reducedPrimalPrg < reducedPrg
             if faces{end}.isProper
                 
                 coneToFace = faces{end}.coneToFace;
-                Ar = [unreducedPrg.A*coneToFace'];
-                cr = [unreducedPrg.c*coneToFace'];
+                Ar = unreducedPrg.A*coneToFace';
+                cr = unreducedPrg.c*coneToFace';
                 Kr = faces{end}.K;
 
                 [Ar,br,Ty] = CleanLinear(Ar,unreducedPrg.b,opts.useQR);
@@ -92,7 +92,7 @@ classdef reducedPrimalPrg < reducedPrg
             ComputeDelta = @(t,redCert) t*redCert.S;
             s0 = self.unreducedPrg.c-y0'*self.unreducedPrg.A;
          
-            [sr,success,deltas] = solUtil.LineSearch(s0,self.faces,ComputeDelta,eps);    
+            [~,success,deltas] = solUtil.LineSearch(s0,self.faces,ComputeDelta,eps);    
             if (success)
                 yr = y0;
                 for i=2:length(self.faces)
