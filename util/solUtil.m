@@ -3,13 +3,24 @@ classdef solUtil
     methods(Static)
         
         function [nneg,lor,rlor,psd] = GetDualSlacks(y,A,c,K)
-            
+            nneg = []; lor = []; rlor = []; psd = [];
+            c = c(:);
             offset = K.f;
             indx = 1:K.f;
-            freeDual = c(indx)' - y'*A(:,indx);
+
+            K.q = K.q(K.q>0);
+            K.r = K.r(K.r>0);
+            K.s = K.s(K.s>0);
+
 
             indx = offset+[1:K.l];
-            nneg = c(indx)' - y'*A(:,indx);
+
+            if (K.l > 0)
+                nneg = c(indx)' - y'*A(:,indx);
+            else
+                nneg = [];
+            end
+
             offset = offset + K.l;
 
             for i=1:length(K.q)
