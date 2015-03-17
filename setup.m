@@ -1,9 +1,10 @@
 function setup()
 
     display('Updating path...')
-    addpath([pwd,'/util'])
-    addpath([pwd,'/test'])
-    addpath(pwd)
+    directory = fileparts(which('setup.m'));
+    addpath([directory,'/util'])
+    addpath([directory,'/test'])
+    addpath(directory)
 
     %Checking dependencies
     display('Checking dependencies...')
