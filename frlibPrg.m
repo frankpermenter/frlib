@@ -66,7 +66,15 @@ classdef frlibPrg
             if (size(self.A,1) > 0)
             
                 if ~isempty(which('sedumi'))
-                   [x,y,info] = sedumi(self.A,self.b,self.c,self.K,pars);
+                   options.verbose = 1;
+                   options.solver_options = [];
+                    A = self.cone.Desymmetrize(self.A);
+                    c = self.cone.Desymmetrize(self.c(:)');
+                    try
+                        [x,y,info] = spot_mosek(A,self.b,c,self.K,options);
+                    catch
+                        [x,y,info] = sedumi(self.A,self.b,self.c,self.K,pars);
+                    end
                 else
                    error('SeDuMi not found.'); 
                 end
@@ -142,6 +150,29 @@ classdef frlibPrg
             prg = reducedDualPrg(self,faces,opts);
             
         end
+          
+
+        function x = FindDualFace(self)
+         
+            e = sparse(self.cone.indxNNeg,1,1,self.cone.NumVar,1)';
+            Aaux = [self.A;self.c;e];
+            baux = [zeros(size(Aaux,1)-1,1);1];
+            temp = frlibPrg(Aaux,baux,[],self.K);
+            [x,y] = temp.Solve();
+
+        end
+        
+        function y = FindPrimalFace(self)
+         
+            K = self.K;
+            K.f = self.K.f + 1;
+            Caux = [zeros(self.cone.NumVar+1,1)];
+            Aaux = [self.b,self.A];
+            temp = frlibPrg(Aaux,0*self.b,Caux,K);
+            [x,y] = temp.Solve();
+
+        end
+
 
     end
      
@@ -168,11 +199,13 @@ classdef frlibPrg
                 end
 
                 iter = iter + 1;
+               
 
             end
 
         end
        
+        
     end
     
     methods(Static,Access=protected)
@@ -198,6 +231,9 @@ classdef frlibPrg
             end
 
         end
+
+
+        
 
     end
     

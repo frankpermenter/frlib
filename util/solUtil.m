@@ -3,6 +3,7 @@ classdef solUtil
     methods(Static)
         
         function [nneg,lor,rlor,psd] = GetDualSlacks(y,A,c,K)
+            K = coneBase.cleanK(K);
             nneg = []; lor = []; rlor = []; psd = [];
             c = c(:);
             offset = K.f;
@@ -44,7 +45,7 @@ classdef solUtil
         end
         
         function [nneg,lor,rlor,psd]  = GetPrimalVars(x,K)
-
+            K = coneBase.cleanK(K);
             offset = K.f;
 
             indx = offset+[1:K.l];
