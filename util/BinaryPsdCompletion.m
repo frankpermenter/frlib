@@ -1,6 +1,10 @@
 function [M,cliques] = BinaryPsdCompletion(M)
 
 [r,~] = find(M);
+if isempty(r)
+    cliques = {}; return
+end
+
 r = unique(r);
 [~,~,cliques] = conncomp(M(r,r));
 
