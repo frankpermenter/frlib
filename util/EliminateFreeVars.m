@@ -1,12 +1,10 @@
-function [A,b,K] = EliminateFreeVars(A,b,K)
+function [A,b] = EliminateFreeVars(A,b,Kf)
 
-    t = coneBase(K);
-    Kfend = t.Kend.f;
-    Af=A(:,1:Kfend);
-    Aqrs = A(:,Kfend+1:end);
+    Af=A(:,1:Kf);
+    Aqrs = A(:,Kf+1:end);
     if ~isempty(Af)       
         nullSpaceAt =  NullQR(Af');
         A = nullSpaceAt'*Aqrs;
         b =  nullSpaceAt'*b;
     end
-    K.f = 0;
+   
