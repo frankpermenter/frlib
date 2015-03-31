@@ -1,31 +1,43 @@
-function [Apsd,K] = ConsolidateLinearAndPSDConstraints(A,K)
+function [Apsd,Kpsd] = ConsolidateLinearAndPSDConstraints(A,K)
 
-    if (length(K.s)+K.l <= 1)
-        return;
+    if (length(K.s)+K.l <= 1) && (K.f == 0)
+       Apsd = A; Kpsd = K;
+       return;
     end
 
-    t = coneBase(K);
-    K = t.cleanK(K);
+    %Throw away everything but lin/psd vars
+    sLin = 1 + K.f;
+    eLin = sLin + K.l-1;
+    sPsd = K.f + K.l + sum(K.r) + sum(K.q) + 1;
+    A = [A(:,sLin:eLin),A(:,sPsd:end)];
+
+    NumVars = K.l+sum(K.s.^2);
+    linearVars = K.l;
     K.s = [ones(1,K.l),K.s];
-    K.l = 0;
-
-    sLin = t.Kstart.l;
-    eLin = t.Kend.l;
-    sPsd = t.Kstart.s(1);
-    A = [A(:,1:t.Kend.f),A(:,eLin+1:sPsd-1),A(:,sLin:eLin),A(:,sPsd:end)];
-
-    t = coneBase(K);
-
-    if (t.NumVar ~= size(A,2))
+    K.r = 0; K.q = 0; K.l = 0;
+       
+    if (NumVars ~= size(A,2))
        error('Num var mismatch') 
     end
 
-    for i=1:size(A,1)
-        m = [];
-        for j=1:length(t.Kstart.s)   
-           m = blkdiag(m,mat(A(i,t.Kstart.s(j):t.Kend.s(j))));
-        end
-        Apsd(i,:) = m(:)';
+   
+    indx = sparse(1:linearVars,1:linearVars,ones(linearVars,1),sum(K.s),sum(K.s));
+    
+    if isempty(linearVars)
+        offset = 0;
+    else
+        offset = linearVars;
     end
 
-    K.s = sum(K.s);
+    for i=(offset+1):length(K.s)   
+       s = sum(K.s(1:i-1))+1;
+       e = K.s(i)+s-1;
+       indxTemp = ones(K.s(i));     
+       indx(s:e,s:e) = indxTemp;
+    end
+    indx = find(indx(:));
+   
+    Kpsd.s = sum(K.s);
+    Apsd(:,indx) = A;
+
+   
