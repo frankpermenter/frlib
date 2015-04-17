@@ -71,7 +71,7 @@ classdef frlibPrg
                     A = self.cone.Desymmetrize(self.A);
                     c = self.cone.Desymmetrize(self.c(:)');
                     try
-                        [x,y,info] = spot_mosek(A,self.b,c,self.K,options);
+                        [x,y,~,info] = spot_mosek(A,self.b,c,self.K,options);
                     catch
                         [x,y,info] = sedumi(self.A,self.b,self.c,self.K,pars);
                     end
