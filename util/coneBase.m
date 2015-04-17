@@ -205,17 +205,19 @@ classdef coneBase
         
         function A = Desymmetrize(self,A)
 
-            indxDiag = cell2mat(self.indxDiag);
-            temp = A;
-            temp(:,indxDiag) =  temp(:,indxDiag)/2;
+            if sum(self.K.s) > 0 
+                indxDiag = cell2mat(self.indxDiag);
+                temp = A;
+                temp(:,indxDiag) =  temp(:,indxDiag)/2;
 
-            indxRescale = self.LowerTriIndx();
-            indxRescale = indxRescale( indxRescale >= indxDiag(1));
-            temp(:,indxRescale) = temp(:,indxRescale)*2;
-            temp = self.LowerTri(temp);
+                indxRescale = self.LowerTriIndx();
+                indxRescale = indxRescale( indxRescale >= indxDiag(1));
+                temp(:,indxRescale) = temp(:,indxRescale)*2;
+                temp = self.LowerTri(temp);
 
-            A = sparse( size(A,1), size(A,2));
-            A(:,self.LowerTriIndx()) = temp;
+                A = sparse( size(A,1), size(A,2));
+                A(:,self.LowerTriIndx()) = temp;
+            end
 
         end
 
