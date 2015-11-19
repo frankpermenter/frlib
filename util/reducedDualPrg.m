@@ -3,7 +3,7 @@ classdef reducedDualPrg < reducedPrg
     properties(Access=protected)
         
         prgWithEq;
-
+        
     end
 
     methods
@@ -65,6 +65,7 @@ classdef reducedDualPrg < reducedPrg
             self.opts = opts;
             self.Ty = Ty;
             self.y0 = y0;
+            self.primalOrDual = 'dual';
            
         end
         
@@ -159,7 +160,8 @@ end
 
 function [redPrgData,T,y0] = PreSolveDualEqs(Deq,feq,A,b,c)
     
-    [y0,T] = LinEqSol(Deq',feq');
+    [Deq,feq] = CleanLinear(Deq',feq');
+    [y0,T] = LinEqSol(Deq,feq);
    
     redPrgData.A = T'*A;
     redPrgData.c = c(:) - A'*y0;

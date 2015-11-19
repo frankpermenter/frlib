@@ -23,7 +23,10 @@ if (Kin.f > 0)
     [Apsd,b] = EliminateFreeVars([Ain(:,1:Kin.f),Apsd],b,Kin.f);
 end
 
-t = coneBase(K);
+
+
+
+
 
 tau = double(b~=0);
 tauPrev = tau;
@@ -46,6 +49,10 @@ while(1)
 
 end
 
+%Mco=CoherentReduce(Apsd*1000,b*1000,c,K);
+cone=coneBase(K);
+nnz(cone.UpperTri(M(:)'))
+%max(max(Mco))
 
 indx = zeros(nnz(Mvect),1); e = 0;
 for i=1:length(cliques)

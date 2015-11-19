@@ -10,6 +10,7 @@ classdef faceBase
        isProper
        redCert
        parser
+       time
     end
 
     properties(Access=private)
@@ -53,16 +54,16 @@ classdef faceBase
 
                 S = reshape(SblkDiag(s:e),self.K.s(i),self.K.s(i));
 
-                [B,rangeS] = NullQR(S);
-                
+                [B,~,rangeSOrth] = NullQR(S);
+                B = NullDD(S);
                 if self.isProper
                   
-                    V{i} = [self.V{i},self.U{i} * rangeS];
+                    V{i} = [self.V{i},self.U{i} * rangeSOrth];
                     U{i} = self.U{i} * B; 
                     
                 else
                       
-                    V{i} = rangeS;  
+                    V{i} = rangeSOrth;  
                     U{i} = B;  
                     
                 end
@@ -108,6 +109,24 @@ classdef faceBase
 
         end       
 
+        
+        function x = ProjFace(self,x)
+            
+            if self.isProper
+            
+                for i = 1:length(self.K.s)  
+
+                    [s,e] = self.parserCone.GetIndx('s',i);
+                    temp = self.U{i}'*solUtil.mat(x(s:e))*self.U{i};
+                    temp = self.U{i}*temp*self.U{i}';
+                    x(s:e) = temp(:);
+
+                end
+                
+            end
+            
+        end
+            
         function pass = InLinearSpan(self,x,eps)
             
             if ~exist('eps','var') || isempty(eps)
@@ -116,7 +135,7 @@ classdef faceBase
             
             pass = norm(self.resSubspace*x(:))  < eps;
             pass = pass & norm(self.spanConjFace*x(:)) < eps;
-            
+            pass = pass & norm(x-self.ProjFace(x)) < eps;
         end
 
         function pass = InDualCone(self,x,eps)

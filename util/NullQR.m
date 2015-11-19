@@ -1,9 +1,9 @@
-function [nullA,rangeAt] = NullQR(A,eps)
+function [nullA,rangeAt,rangeAtOrth] = NullQR(A,eps)
 
     if ~exist('eps','var')
         eps = 10^-8;
     end
-
+    
     n = size(A,1);
     [q,r,e] = qr(A');
     [e,~] = find(e);
@@ -24,7 +24,7 @@ function [nullA,rangeAt] = NullQR(A,eps)
     nullA = q(:,indxNull);
     Atperm = A(e,:)';
     rangeAt = Atperm(:,setdiff(1:n,indxNull));
-   
+    rangeAtOrth = q(:,setdiff(1:n,indxNull));
 
 
 

@@ -4,6 +4,7 @@ classdef blkdiagPrg < reducedPrg
         indx
         clique
         dim
+        M
     end
 
     methods
@@ -22,14 +23,12 @@ classdef blkdiagPrg < reducedPrg
             K = unreducedPrg.K;
             self.dim(2) =  sum( (K.s.^2 + K.s)/2   ) + K.l;
             self.indx = indx;
-           
+            self.M = M;
      
         end
 
         
         function [xr,yr,dual_recov_success] = Recover(self,x,y,eps)
-
-     
 
             if ~exist('eps','var')
                 eps = 10^-4;
@@ -90,11 +89,11 @@ classdef blkdiagPrg < reducedPrg
         end        
         
 
-      function PrintStats(self)
+        function PrintStats(self)
             
             K = self.K;
             Korig = self.unreducedPrg.K;
-   
+
             if  length(K.s) == length(Korig.s) & all(K.s == Korig.s)
                 display('-------------------------------------------------------------------------')
                 display('frlib: No reductions found.')
@@ -109,7 +108,31 @@ classdef blkdiagPrg < reducedPrg
             end
 
         end
+
+        function dim = FindCoherent2(self,i)
+
+            A = self.A;
+            b = self.b;
+            xls = A'*(inv(A*A'))*b;
+            m = size(self.A,1);
+            P = [];
+            for i=1:length(self.K.s)
+                indx = self.cone.Kstart.s(i):self.cone.Kend.s(i);
+                Ktemp.s = self.K.s(i);
+                Atemp = self.A(:,indx);
+                ctemp = xls(indx);
+                [M,Ptemp] = CoherentReduce(Atemp,self.b,ctemp);
+                P = blkdiag(P,Ptemp);
+                dim(i) = max(max(M));
+            end
+
+        end
+
+    
+
+      
+      
               
-    end
+end
 
 end

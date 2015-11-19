@@ -17,6 +17,11 @@ classdef frlibPrg
 
         function self = frlibPrg(A,b,c,K)
           
+%             digits = 1000;
+%             A = round(digits*A)/digits; b = round(digits*b/digits);
+%             c = round(digits*c)/digits;
+            
+            
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
@@ -57,27 +62,41 @@ classdef frlibPrg
 
         function [x,y,info] = Solve(self,pars)
 
-            if ~exist('pars','var')
-                pars = [];
-            end
+            pars.solver = 'sedumi';
 
             x = []; y = []; info = [];
             
             if (size(self.A,1) > 0)
             
-                if ~isempty(which('sedumi'))
+               
                    options.verbose = 1;
                    options.solver_options = [];
-                    A = self.cone.Desymmetrize(self.A);
-                    c = self.cone.Desymmetrize(self.c(:)');
-                    try
-                        [x,y,info] = spot_mosek(A,self.b,c,self.K,options);
-                    catch
-                        [x,y,info] = sedumi(self.A,self.b,self.c,self.K,pars);
+  
+                    switch pars.solver
+                        case 'mosek' 
+                            A = self.cone.Desymmetrize(self.A);
+                            c = self.cone.Desymmetrize(self.c(:)');
+                            [x,y,info] = spot_mosek(A,self.b,c,self.K,options);
+                        case 'sdpt3' 
+                            K = self.K; K.s = K.s(K.s~=0);
+                            [blk,A,C,b,perm] = read_sedumi(self.A,self.b,self.c,K,0);
+                            
+                            [~,xtemp,y,~,info] = sdpt3(blk,A,C,b,perm);
+                            x = [];
+                            for i=1:length(xtemp)
+                                x = [x;xtemp{i}(:)];
+                            end
+                            info.pinf  = info.pinfeas;
+                            info.dinf  = info.dinfeas;
+                            info.time  = info.cputime;
+                            
+                        otherwise
+                           
+                            self.K.s = self.K.s(self.K.s ~=0);
+                            [x,y,info] = sedumi(self.A,self.b,self.c,self.K);
+                            info.time = info.wallsec; 
                     end
-                else
-                   error('SeDuMi not found.'); 
-                end
+                
             
             else
 
@@ -88,23 +107,40 @@ classdef frlibPrg
             
         end
      
-        function pass = CheckSolution(self,x,y,eps)
+        function [pass,e] = CheckSolution(self,x,y,eps)
             
            pass = 1;
            pass = pass & self.CheckPrimal(x,eps);
            pass = pass & self.CheckDual(y,eps);
            pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
            
+           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
+           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
+              
+           e(3) = 0;
+           z = self.c-y'*self.A;
+           e(4)  = max(0,-min(eigK(z,self.K))) /(1+norm(self.c,1));
+           
+           ctx = self.c*x; bty = self.b'*y;
+           e(5) = (ctx-bty)/(1+abs(ctx)+abs(bty));
+           
+           e(6) = x(:)'*z(:)/(1+abs(ctx)+abs(bty));
         end
-    
-        function pass = CheckPrimal(self,x,eps)
+
+ 
+        function [pass,e] = CheckPrimal(self,x,eps)
+           
+           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
+           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
             
            pass = solUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
            
         end
         
-        function pass = CheckDual(self,y,eps)
-            
+        function [pass,e] = CheckDual(self,y,eps)
+           
+           z = self.c-y'*self.A;
+           e  = max(0,-min(eigK(z,self.K)))/(1+norm(self.c,1));
            pass = solUtil.CheckDual(y,self.A,self.b,self.c,self.K,eps);  
            
         end
@@ -119,6 +155,11 @@ classdef frlibPrg
             if strcmp(method,'dd')
                 procReduce = @(self,face) facialRed.PolyhedralPrimIter(self,face,'dd');
             end
+        
+            if strcmp(method,'sdd')
+                procReduce = @(self,face) facialRed.SDDPrimIter(self,face,'dd');
+            end
+            
             
             if ~exist('opts','var')
                 opts = self.defaultRedOpts;
@@ -189,18 +230,18 @@ classdef frlibPrg
 
             while (1)
 
-                [success,currentFace] = procReduce(self,currentFace);
+                [success,currentFace,timeRed] = procReduce(self,currentFace);
                 if (success)
+                    faces{end}.time = timeRed;
                     faces{end+1} = currentFace;
                 end
 
                 if success == 0 || iter >= maxIter
                     break;
                 end
-
+          
                 iter = iter + 1;
                
-
             end
 
         end
@@ -231,9 +272,6 @@ classdef frlibPrg
             end
 
         end
-
-
-        
 
     end
     

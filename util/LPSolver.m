@@ -29,30 +29,31 @@ classdef LPSolver
             
         end
         
-        function [x,numErr,infeas] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,numErr,infeas,time] = SolveLP(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             solverHandle = LPSolver.GetSolver();
             if isempty(solverHandle)
                 error('No solvers found!')
             else
-                [x,numErr,infeas] = solverHandle(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+                [x,numErr,infeas,time] = solverHandle(c,Aineq,bineq,Aeq,beq,lbnd,ubnd);
             end
             
         end
         
-        function [x,numErr,infeas] = SolveLPlinprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,numErr,infeas,time] = SolveLPlinprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             options = optimset(@linprog);
             options.Display='off';
+            time = cputime;
             [x,~,flag] = linprog(c,Aineq,bineq,Aeq,beq,lbnd,ubnd,[],options);
-                
+            time = cputime - time;    
             infeas = flag == -2 | flag == -5;
             numErr = ~infeas && flag ~= 1;
                        
         end
         
         
-        function [x,numErr,infeas] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,numErr,infeas,time] = SolveLPMosek(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             param.MSK_IPAR_INTPNT_BASIS = 0;
             param.MSK_IPAR_MAX_NUM_WARNINGS = 0;
@@ -118,20 +119,21 @@ classdef LPSolver
                         flag = -3;
                     end
                     
+                    
                 end
                 
             else
                 
                 flag = -999;
-                
+               
             end
-            
+            time = res.info.MSK_DINF_OPTIMIZER_TIME;
             infeas = flag == -2;
             numErr = ~infeas && flag ~= 1;
                                 
         end
         
-        function [x,infeas,numErr] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,infeas,numErr,time] = SolveLPGurobi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             infeas = 1; numErr = 1;
             model.A = sparse([Aineq;Aeq]);
@@ -144,7 +146,9 @@ classdef LPSolver
             params.method = 1;
             params.crossover = 0;
             params.outputflag = 0;
+            time = cputime;
             result = gurobi(model,params);
+            time = cputime - time;
             flag = result.status;
             
             if (strcmp(flag,'INFEASIBLE'))
@@ -161,7 +165,7 @@ classdef LPSolver
             
         end
         
-        function [x,infeas,numErr] = SolveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
+        function [x,infeas,numErr,time] = SolveLPSedumi(c,Aineq,bineq,Aeq,beq,lbnd,ubnd)
             
             Meq = size(Aeq,1);
             N = size(Aeq,2);
@@ -189,12 +193,15 @@ classdef LPSolver
             c = [c;sparse(numSlack,1)];
             
             pars.fid = 0;
+            time = cputime;
             try
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             catch
                 [A,b] = CleanLinear(A,b,1);
                 [xopt,~,info] = sedumi(A,b,[],K,pars);
             end
+            time = time-cputime;
+            
             x = sparse( xopt(1:N,1));
             
             infeas = info.pinf == 1;

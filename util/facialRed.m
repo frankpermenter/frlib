@@ -99,7 +99,7 @@ classdef facialRed
         
         function [success,newFace,timeRed]  = PolyhedralPrimIter(self,face,gensOrType)
 
-            success = 0; newFace = []; timeRed = []; 
+            success = 0; newFace = []; timeRed = 0; 
             
             W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
             numGens = size(W,1);
@@ -107,10 +107,10 @@ classdef facialRed
             
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildPrimLP(self.A,self.b,face,W);
             
-            tic;
-            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-            timeRed = toc;
            
+            [x,numerr,infeas,time] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            
+            timeRed = timeRed + time;
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
    
             if success
@@ -126,7 +126,8 @@ classdef facialRed
                 [newFace] = face.Intersect(sBarExtRay);
                 newFace.redCert.y = yRed;
                 newFace.redCert.S = yRed'*self.A;
-                newFace.redCert.extRays = sBarExtRay;
+                newFace.redCert.extRays = W(xtemp,:)';
+                newFace.time = time;
                 
             end
 
@@ -134,16 +135,15 @@ classdef facialRed
              
         function [success,newFace,timeRed] = PolyhedralDualIter(self,face,gensOrType)
 
-            success = 0; newFace = []; timeRed = []; 
+            success = 0; newFace = []; timeRed = 0; 
             W =  facialRed.GetGeneratorsOfApprox(face,gensOrType);
             numGens = size(W,1);
             if numGens == 0, return, end
             
             [cost,Aineq,bineq,Aeq,beq,ubnd,lbnd,solMap] = facialRed.BuildDualLP(self.A,self.c,face,W);
             
-            tic;
-            [x,numerr,infeas] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
-            timeRed = toc;
+            [x,numerr,infeas,time] = LPSolver.SolveLP(cost,Aineq,bineq,Aeq,beq,lbnd,ubnd);
+            timeRed = timeRed + time;
             
             success = numerr == 0 & infeas == 0 & -cost'*x >= .2;
                    
@@ -167,12 +167,78 @@ classdef facialRed
                 
                 [newFace] = face.Intersect(sBarExtRay);
                 newFace.redCert.S = redCert;
+                newFace.time = time;
                 
             end
 
         end
                  
-        
+         function [success,newFace,timeRed] = SDDPrimIter(self,face,cone)
+            success = 0; newFace = [];      
+            coneFace = coneBase(face.K);
+            prg = spotsosprog;
+            m = size(self.A,1);
+            redCert = []; yRed = []; timeRed = [];
+            
+            A = self.A;
+            if face.isProper
+                A = [face.coneToFace*A']';
+            end
+            
+            %A = face.parser.LowerTri(A);
+            
+            
+            [prg,u] = prg.newFree(m);
+            prg = prg.withEqs(u'*self.b);
+            S = sparse(1,coneFace.Kstart.s(1)-1);
+            for i=1:length(coneFace.K.s)  
+                if (coneFace.K.s(i) > 1 )
+                    [prg,Stemp] = prg.newSDD(coneFace.K.s(i));   
+                    S = [S,Stemp(:)'];
+                else
+                    [prg,Stemp] = prg.newPos(coneFace.K.s(i)); 
+                     S = [S,Stemp(:)'];
+                end
+            end
+            
+            prg = prg.withEqs(S-u'*A);
+            tr = sum(S(coneFace.indxNNeg));
+            prg = prg.withEqs(tr-1);
+            
+            try
+
+                tic
+                sol = prg.minimize(0,@spot_mosek);
+                timeRed = toc;
+                redCert = double(sol.eval(S));
+                yRed =  double(sol.eval(u));
+                success = 1;
+
+            catch
+
+                success = 0;
+                redCert = [];
+                
+            end
+
+            if (success == 0)
+               return 
+            end
+            %Heuristic rounding
+            redCert(find(round(redCert*10^6)==0)) = 0;
+           
+            if success
+
+
+                [newFace] = face.Intersect(redCert);
+                newFace.redCert.y = yRed;
+                newFace.redCert.S = redCert;
+                newFace.redCert.extRays = redCert;
+                newFace.time = [];
+                
+            end
+                
+        end 
 
         function W = GetGenerators(Kface,type)
             
