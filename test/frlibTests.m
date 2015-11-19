@@ -3,8 +3,8 @@ function frlibTests
     opts.useQR = 1;
 
     eps = 10^-4;
-    
-    load hybridLyap.mat;
+    directory =  fileparts(which('frlibTests.m'));
+    load([directory,'/hybrid/hybridLyap.mat']);
     A = A';
     prg = frlibPrg(A,b,c,K);
 
