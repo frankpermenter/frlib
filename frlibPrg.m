@@ -16,12 +16,7 @@ classdef frlibPrg
     methods
 
         function self = frlibPrg(A,b,c,K)
-          
-%             digits = 1000;
-%             A = round(digits*A)/digits; b = round(digits*b/digits);
-%             c = round(digits*c)/digits;
-            
-            
+                                  
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
@@ -48,6 +43,7 @@ classdef frlibPrg
                 error(['Number of variables do not match length of c. Num vars: ',num2str(self.cone.NumVar),', Length c: ', num2str(length(c))]);
             end
           
+ 
             A = self.cone.Symmetrize(A); 
             c = self.cone.Symmetrize(c(:)'); 
 

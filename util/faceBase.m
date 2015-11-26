@@ -55,7 +55,7 @@ classdef faceBase
                 S = reshape(SblkDiag(s:e),self.K.s(i),self.K.s(i));
 
                 [B,~,rangeSOrth] = NullQR(S);
-                B = NullDD(S);
+                 B = NullDD(S);
                 if self.isProper
                   
                     V{i} = [self.V{i},self.U{i} * rangeSOrth];
@@ -111,7 +111,7 @@ classdef faceBase
 
         
         function x = ProjFace(self,x)
-            
+            x = x(:);
             if self.isProper
             
                 for i = 1:length(self.K.s)  

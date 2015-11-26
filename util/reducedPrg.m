@@ -88,12 +88,12 @@ classdef reducedPrg < frlibPrg
             
         
                 fprintf('Reduced \n')
-                data = [data,info.time,nnz(self.A)];
+                data = [data,info.time,nnz(self.A)+nnz(self.c)];
                 fprintf([repmat('%2.3E &\t',1,length(data)-2), '%d &\t %d\n'],data);
                 datar=data;
                 fprintf('Not Reduced\n')
                 data = dataNoRed; info = infoNoRed;
-                data = [data,info.time,nnz(self.unreducedPrg.A)];
+                data = [data,info.time,nnz(self.unreducedPrg.A)+nnz(self.unreducedPrg.c) ];
                 fprintf([repmat('%2.3E &\t',1,length(data)-2), '%d & \t %d\n'],data); 
                 dataNoRed=data;
             end

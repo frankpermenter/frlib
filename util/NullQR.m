@@ -16,15 +16,18 @@ function [nullA,rangeAt,rangeAtOrth] = NullQR(A,eps)
     end
     
     if ~isempty(p)
-        indxNull = min(p):size(q,2);
+        startNull = min(p);
+        indxNull = startNull:size(q,2);
+        indxRange = 1:startNull-1;
     else
         indxNull = n+1:size(q,2);
+        indxRange = 1:n;
     end
 
     nullA = q(:,indxNull);
     Atperm = A(e,:)';
-    rangeAt = Atperm(:,setdiff(1:n,indxNull));
-    rangeAtOrth = q(:,setdiff(1:n,indxNull));
+    rangeAt = Atperm(:,indxRange);
+    rangeAtOrth = q(:,indxRange);
 
 
 
