@@ -9,10 +9,11 @@ function pass = runHorn(opts)
     end
     
     pars.verbose = opts.verbose;
-
+    directory =  fileparts(which('frlibTests.m'));
+    
     for i=2:5
-        
-        load(['horn',num2str(i),'.mat']);
+       
+        load([directory,'/copos/horn',num2str(i),'.mat']);
         c = [1:K.s]'; c = c*c'; c = c(:);
         
         p = frlibPrg(A,b,c,K);
@@ -30,7 +31,7 @@ function pass = runHorn(opts)
             xerror('dfdf')
         end
   
-        load(['hornD',num2str(i),'.mat']);
+        load([directory,'/copos/hornD',num2str(i),'.mat']);
         b = [1:size(A,1)]';
         d = frlibPrg(A,b,c(:),K);
         [~,yorig] = sedumi(A,b,c(:),K,pars);

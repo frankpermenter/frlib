@@ -16,7 +16,7 @@ classdef frlibPrg
     methods
 
         function self = frlibPrg(A,b,c,K)
-                                  
+          
             if ~isstruct(K)
                error('Invalid input. 4th argument must be a struct')
             end
@@ -43,7 +43,6 @@ classdef frlibPrg
                 error(['Number of variables do not match length of c. Num vars: ',num2str(self.cone.NumVar),', Length c: ', num2str(length(c))]);
             end
           
- 
             A = self.cone.Symmetrize(A); 
             c = self.cone.Symmetrize(c(:)'); 
 
@@ -64,7 +63,7 @@ classdef frlibPrg
             
             if (size(self.A,1) > 0)
             
-               
+                if ~isempty(which('sedumi'))
                    options.verbose = 1;
                    options.solver_options = [];
   
@@ -92,7 +91,9 @@ classdef frlibPrg
                             [x,y,info] = sedumi(self.A,self.b,self.c,self.K);
                             info.time = info.wallsec; 
                     end
-                
+                else
+                   error('SeDuMi not found.'); 
+                end
             
             else
 
@@ -103,31 +104,16 @@ classdef frlibPrg
             
         end
      
-        function [pass,e] = CheckSolution(self,x,y,eps)
+        function pass = CheckSolution(self,x,y,eps)
             
            pass = 1;
            pass = pass & self.CheckPrimal(x,eps);
            pass = pass & self.CheckDual(y,eps);
            pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
            
-           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
-           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
-              
-           e(3) = 0;
-           z = self.c-y'*self.A;
-           e(4)  = max(0,-min(eigK(z,self.K))) /(1+norm(self.c,1));
-           
-           ctx = self.c*x; bty = self.b'*y;
-           e(5) = (ctx-bty)/(1+abs(ctx)+abs(bty));
-           
-           e(6) = x(:)'*z(:)/(1+abs(ctx)+abs(bty));
         end
-
- 
-        function [pass,e] = CheckPrimal(self,x,eps)
-           
-           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
-           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
+    
+        function pass = CheckPrimal(self,x,eps)
             
            pass = solUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
            
@@ -235,9 +221,10 @@ classdef frlibPrg
                 if success == 0 || iter >= maxIter
                     break;
                 end
-          
+
                 iter = iter + 1;
                
+
             end
 
         end
@@ -268,6 +255,9 @@ classdef frlibPrg
             end
 
         end
+
+
+        
 
     end
     
