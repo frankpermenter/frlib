@@ -2,7 +2,7 @@ function [cliques,Ar,cr,Kr,indx,M] = BuildMask(A,b,c,K)
 
 c = c(:)';
 if nnz(c(1:K.f)) > 0
-%    error('Cannot eliminate free variables if they appear in objective');
+    error('Cannot eliminate free variables if they appear in objective');
 end
 
 if K.q + K.r  > 0
