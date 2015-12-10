@@ -118,12 +118,20 @@ classdef facialRed
                 x = sparse(x);
                 xtemp = sparse(x(1:numGens,1));
                 
-                yRed = x(solMap.y.s:solMap.y.e);
-                
+                yRed =  x(solMap.y.s:solMap.y.e);   
+               % yRed = solUtil.flooreps(yRed,10^-11*max(abs(yRed)));
+                yRed = round(100000*yRed)/100000;
+                S = yRed'*self.A;
+      
                 xtemp = xtemp > max(xtemp)*.0001;
-                sBarExtRay = W'*xtemp;         
-                
+             	sBarExtRay = W'*xtemp;    
                 [newFace] = face.Intersect(sBarExtRay);
+                
+              %  if ~face.isProper
+              %     [newFace] = face.Intersect( S(:) );
+               % else
+               %     [newFace] = face.Intersect( face.coneToFace*S(:) );
+               % end
                 newFace.redCert.y = yRed;
                 newFace.redCert.S = yRed'*self.A;
                 newFace.redCert.extRays = W(xtemp,:)';
@@ -151,7 +159,7 @@ classdef facialRed
 
                 x = sparse(x);
                 xtemp = sparse(x(1:numGens,1));
-
+                xtemp = round(100000*xtemp)/100000;
                 sBar = W'*xtemp; 
                 xtemp = xtemp > max(xtemp)*.0001;
                 sBarExtRay = W'*xtemp;

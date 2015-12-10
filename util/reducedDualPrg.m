@@ -159,15 +159,17 @@ classdef reducedDualPrg < reducedPrg
 end
 
 function [redPrgData,T,y0] = PreSolveDualEqs(Deq,feq,A,b,c)
-    
-    [Deq,feq] = CleanLinear(Deq',feq');
-    [y0,T] = LinEqSol(Deq,feq);
-   
-    scl = 100000000;
-    Tm = (round(T*scl)/scl) ~= 0;
-    ym = (round(y0*scl)/scl) ~= 0;
-    T = T.*Tm;
-    y0 = y0.*ym;
+
+    temp = [Deq;feq];
+    temp = temp(:,any(temp));
+    feq = temp(end,:);
+    Deq = temp(1:end-1,:);
+    [y0,T] = LinEqSol(Deq',feq');
+
+
+    T = solUtil.flooreps(T,10^-13);
+    y0 = solUtil.flooreps(y0,10^-13);
+
     redPrgData.A = T'*A;
     redPrgData.c = c(:) - A'*y0;
     redPrgData.b = T'*b;

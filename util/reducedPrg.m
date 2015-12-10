@@ -30,13 +30,40 @@ classdef reducedPrg < frlibPrg
             self = self@frlibPrg(A,b,c,K);
         end
 
-        function pass = VerifyRedCert(self)
+        function [pass,errors] = VerifyRedCert(self,eps)
 
-            pass = 1;
+            if nargin < 2
+               eps = 0; 
+            end
+            
+            pass = 1;  errors = {};
             for i=1:length(self.faces)-1
-                if ~self.faces{i}.InDualCone(self.faces{i+1}.redCert.S)
+                
+                if ~self.faces{i}.InDualCone(self.faces{i+1}.redCert.S,eps)
                     pass = 0;
+                    min_eig = eigK(self.faces{i+1}.redCert.S, self.unreducedPrg.K);
+                    min_eig = min(min_eig);
+                else
+                    min_eig = 0;
                 end
+               
+                if isa(self, 'reducedPrimalPrg')
+                    err1 = self.faces{i+1}.redCert.y'*self.unreducedPrg.b;
+                    err2 = norm(  self.unreducedPrg.A'*self.faces{i+1}.redCert.y- ...
+                            self.faces{i+1}.redCert.S');
+                end
+            
+                if isa(self, 'reducedDualPrg')
+                    err1 = abs( self.unreducedPrg.c(:)'*self.faces{i+1}.redCert.S);
+                    err2 = max( abs( self.unreducedPrg.A*self.faces{i+1}.redCert.S));
+                end
+                
+
+                if err1 > eps || err2 > eps 
+                    pass = 0; 
+                end
+                
+                errors{i} = [err1,err2,min_eig];
             end
 
         end
@@ -51,7 +78,7 @@ classdef reducedPrg < frlibPrg
                 CheckFeas = @(info) info.pinf ~= 1 && info.dinf ~= 1;
                 Recover = @(prg,x,y) {x,prg.RecoverDual(y)};
                 DistToFace = @(prg,x,y) norm(prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A  - ...
-                     prg.faces{end}.ProjFace( prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A));
+                     prg.faces{end}.ProjFace( prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A)' );
             end
             
     

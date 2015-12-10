@@ -10,7 +10,7 @@ function frlibTests
 
     %diagonal
     TestDisplay('Checking reduction of primal (diagonal)');
-    prgD = prg.ReducePrimal('d');
+    
     prgD = prg.ReducePrimal('d',opts);
     PrintStats(prgD);
     
@@ -104,7 +104,7 @@ function pass = TestSolution(prg,prgR,eps)
         pass = 1; 
     end
     
-    pass = pass & prgR.VerifyRedCert();
+    pass = pass & prgR.VerifyRedCert(eps);
     
 end
 

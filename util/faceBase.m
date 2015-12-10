@@ -55,7 +55,7 @@ classdef faceBase
                 S = reshape(SblkDiag(s:e),self.K.s(i),self.K.s(i));
 
                 [B,~,rangeSOrth] = NullQR(S);
-                 B = NullDD(S);
+       
                 if self.isProper
                   
                     V{i} = [self.V{i},self.U{i} * rangeSOrth];
@@ -121,6 +121,9 @@ classdef faceBase
                     temp = self.U{i}*temp*self.U{i}';
                     x(s:e) = temp(:);
 
+                    U = self.U{i};
+                    isOrth = norm( U'*U-speye( size(U,2)),'fro') < 10^-10;
+                    if ~isOrth, error('Columns of U not orthnormal'),end;
                 end
                 
             end
@@ -135,29 +138,36 @@ classdef faceBase
             
             pass = norm(self.resSubspace*x(:))  < eps;
             pass = pass & norm(self.spanConjFace*x(:)) < eps;
-            pass = pass & norm(x-self.ProjFace(x)) < eps;
+            pass = pass & norm(x(:)-self.ProjFace(x)) < eps;
         end
 
-        function pass = InDualCone(self,x,eps)
+        function [pass,xproj] = InDualCone(self,x,eps)
             
             if ~exist('eps','var') || isempty(eps)
-                eps = 10^-8;
+                eps = 10^-16;
             end
            
             if self.isProper
                 xface = full(self.coneToFace*x(:));
+                xproj = self.coneToFace'*xface;
             else
                 xface = full(x); 
+                xproj = x;
             end
             
             for i=1:length(self.K.s)
                 [s,e] = self.parser.GetIndx('s',i);
                 xtest = solUtil.mat(xface(s:e));
-
-                if (min(eig(xtest)) > -eps) 
+                if isempty(xtest)
+                   pass(i) = 1; continue;
+                end
+                %numerically robust PSD sufficient condition
+                isDiagDom = solUtil.isDiagDom(xtest,0);
+                
+                if (isDiagDom)  
                     pass(i) = 1;
                 else
-                    pass(i) = isempty(xtest);
+                    pass(i) =  min(eig(xtest)) >= -eps;
                 end
             
             end

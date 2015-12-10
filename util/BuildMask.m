@@ -2,7 +2,7 @@ function [cliques,Ar,cr,Kr,indx,M] = BuildMask(A,b,c,K)
 
 c = c(:)';
 if nnz(c(1:K.f)) > 0
-%    error('Cannot eliminate free variables if they appear in objective');
+   error('Cannot eliminate free variables if they appear in objective');
 end
 
 if K.q + K.r  > 0
@@ -31,16 +31,14 @@ end
 tau = double(b~=0);
 tauPrev = tau;
 
+
 while(1)
 
     Mvect = any(Apsd(tau~=0,:)) | c;
     M = solUtil.mat( Mvect);
     [M,cliques] = BinaryPsdCompletion(M);
     Mvect = M(:)';
-    [~,indx] = find(Mvect);
-    [keep,~] = find(Apsd(:,indx));
-
-    tau(keep) = 1;
+    tau(any(Apsd(:,Mvect>0)~=0,2)) = 1;
     if all(tau == tauPrev)
         break;
     else

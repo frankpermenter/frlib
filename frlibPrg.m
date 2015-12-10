@@ -43,8 +43,10 @@ classdef frlibPrg
                 error(['Number of variables do not match length of c. Num vars: ',num2str(self.cone.NumVar),', Length c: ', num2str(length(c))]);
             end
           
-            A = self.cone.Symmetrize(A); 
-            c = self.cone.Symmetrize(c(:)'); 
+            if  nnz(A(:, self.cone.UpperTriIndx())) ~= nnz(A(:, self.cone.LowerTriIndx()))
+                A = self.cone.Symmetrize(A); 
+                c = self.cone.Symmetrize(c(:)'); 
+            end
 
             self.A = A;
             self.c = c(:)';
@@ -60,40 +62,49 @@ classdef frlibPrg
             pars.solver = 'sedumi';
 
             x = []; y = []; info = [];
-            
+
             if (size(self.A,1) > 0)
-            
-                if ~isempty(which('sedumi'))
-                   options.verbose = 1;
-                   options.solver_options = [];
-  
-                    switch pars.solver
-                        case 'mosek' 
-                            A = self.cone.Desymmetrize(self.A);
-                            c = self.cone.Desymmetrize(self.c(:)');
-                            [x,y,info] = spot_mosek(A,self.b,c,self.K,options);
-                        case 'sdpt3' 
-                            K = self.K; K.s = K.s(K.s~=0);
-                            [blk,A,C,b,perm] = read_sedumi(self.A,self.b,self.c,K,0);
-                            
-                            [~,xtemp,y,~,info] = sdpt3(blk,A,C,b,perm);
-                            x = [];
-                            for i=1:length(xtemp)
-                                x = [x;xtemp{i}(:)];
-                            end
-                            info.pinf  = info.pinfeas;
-                            info.dinf  = info.dinfeas;
-                            info.time  = info.cputime;
-                            
-                        otherwise
-                           
-                            self.K.s = self.K.s(self.K.s ~=0);
-                            [x,y,info] = sedumi(self.A,self.b,self.c,self.K);
-                            info.time = info.wallsec; 
-                    end
-                else
-                   error('SeDuMi not found.'); 
+
+                options.verbose = 1;
+                options.solver_options = [];
+
+                switch pars.solver
+                    
+                    case 'mosek' 
+                        
+                        A = self.cone.Desymmetrize(self.A);
+                        c = self.cone.Desymmetrize(self.c(:)');
+                        tic;
+                        [x,y,z,info] = spot_mosek(A,self.b,c,self.K,options);
+                        info.pinf = 0;
+                        info.dinf = 0;
+                        info.time = toc;
+                        
+                    case 'sdpt3' 
+                        
+                        K = self.K; K.s = K.s(K.s~=0);
+                        [blk,A,C,b,perm] = read_sedumi(self.A,self.b,self.c,K,0);
+
+                        [~,xtemp,y,~,info] = sdpt3(blk,A,C,b,perm);
+                        x = [];
+                        for i=1:length(xtemp)
+                            x = [x;xtemp{i}(:)];
+                        end
+                        info.pinf  = info.pinfeas;
+                        info.dinf  = info.dinfeas;
+                        info.time  = info.cputime;
+
+                    otherwise
+
+                        self.K.s = self.K.s(self.K.s ~=0);
+                        [x,y,info] = sedumi(self.A,self.b,self.c,self.K);
+                        try
+                        info.time = info.wallsec; 
+                        catch
+                           error('dfdf') 
+                        end
                 end
+                
             
             else
 
@@ -104,16 +115,32 @@ classdef frlibPrg
             
         end
      
-        function pass = CheckSolution(self,x,y,eps)
+        function [pass,e] = CheckSolution(self,x,y,eps)
             
            pass = 1;
            pass = pass & self.CheckPrimal(x,eps);
            pass = pass & self.CheckDual(y,eps);
            pass = pass & norm(self.c(:)'*x-self.b'*y) < eps;
            
+           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
+           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
+              
+           e(3) = 0;
+           z = self.c-y'*self.A;
+           e(4)  = max(0,-min(eigK(z,self.K))) /(1+norm(self.c,1));
+           
+           ctx = self.c*x; bty = self.b'*y;
+           e(5) = (ctx-bty)/(1+abs(ctx)+abs(bty));
+           
+           e(6) = x(:)'*z(:)/(1+abs(ctx)+abs(bty));
+           
         end
-    
-        function pass = CheckPrimal(self,x,eps)
+
+ 
+        function [pass,e] = CheckPrimal(self,x,eps)
+           
+           e(1) = norm(self.A*x-self.b)/(1+norm(self.b,1));
+           e(2) = max(0,-min(eigK(x,self.K))) /(1+norm(self.b,1));
             
            pass = solUtil.CheckPrimal(x,self.A,self.b,self.c,self.K,eps); 
            
@@ -141,8 +168,7 @@ classdef frlibPrg
             if strcmp(method,'sdd')
                 procReduce = @(self,face) facialRed.SDDPrimIter(self,face,'dd');
             end
-            
-            
+                      
             if ~exist('opts','var')
                 opts = self.defaultRedOpts;
             end                          
@@ -174,6 +200,11 @@ classdef frlibPrg
             
         end
           
+        function [prg] = BlockDiagonalize(self)
+            
+            [prg] = blkdiagPrg(self);
+            
+        end
 
         function x = FindDualFace(self)
          
@@ -195,7 +226,9 @@ classdef frlibPrg
             [x,y] = temp.Solve();
 
         end
-
+        
+         
+        
 
     end
      
