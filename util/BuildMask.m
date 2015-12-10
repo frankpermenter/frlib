@@ -23,10 +23,9 @@ if (Kin.f > 0)
     [Apsd,b] = EliminateFreeVars([Ain(:,1:Kin.f),Apsd],b,Kin.f);
 end
 
-t = coneBase(K);
-
 tau = double(b~=0);
 tauPrev = tau;
+
 
 while(1)
 
@@ -34,10 +33,7 @@ while(1)
     M = solUtil.mat( Mvect);
     [M,cliques] = BinaryPsdCompletion(M);
     Mvect = M(:)';
-    [~,indx] = find(Mvect);
-    [keep,~] = find(Apsd(:,indx));
-
-    tau(keep) = 1;
+    tau(any(Apsd(:,Mvect>0)~=0,2)) = 1;
     if all(tau == tauPrev)
         break;
     else
