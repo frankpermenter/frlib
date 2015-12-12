@@ -19,8 +19,7 @@ classdef blkdiagPrg < reducedPrg
             self.unreducedPrg = unreducedPrg;
             self.clique = clique;
            
-            self.dim(1) = length(indx);
-           
+            self.dim(1) = length(indx); 
             self.dim(2) = size(unreducedPrg.A,2);
             self.indx = indx;
             self.M = M;
@@ -29,24 +28,17 @@ classdef blkdiagPrg < reducedPrg
         end
 
         
-        function [xr,yr,dual_recov_success] = Recover(self,x,y,eps)
+        function [xr,yr] = Recover(self,x,y)
 
-            if ~exist('eps','var')
-                eps = 10^-4;
-            end
-           
             xr = self.RecoverPrimal(x);
-            [yr,~,dual_recov_success] = self.RecoverDual(y,eps);
-            if (dual_recov_success ~= 1)
-                yr = [];
-            end
-  
+            yr = self.RecoverDual(y);
+            
         end
       
         function [xr] = RecoverPrimal(self,x)
 
             cone = coneBase(self.unreducedPrg.K);
-            xr = sparse(ones(1,length(self.indx)),self.indx,x,1,cone.NumVar);
+            xr = sparse(ones(1,length(self.indx)),self.indx,x,1,cone.NumVar)';
            
         end
            

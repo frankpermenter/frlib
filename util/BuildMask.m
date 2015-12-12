@@ -12,9 +12,14 @@ Kr = K;
 
 cliques = {};
 
+
+%subspace.A = A;
+%subspace.b = b;
 while(1)
 
-    [M] = SubspaceClosureCoordDisjointSupport(M,A,b);
+    [M] = SubspaceClosureCoordDisjointSupport(M,A,b);  %conservative, but fast
+   %[M,subspace] = SubspaceClosureCoord(M,subspace,K); %requires computing large inverse
+
     for i=1:length(K.s)
         [s,e] = cone.GetIndx('s',i);
         [temp,cliques_i] = BinaryPsdCompletion(solUtil.mat(M(s:e)));
@@ -58,17 +63,25 @@ cr = c(indx);
 end
 
 
-function [S] = SubspaceClosureCoordDisjointSupport(S,A,b)
+function [M] = SubspaceClosureCoordDisjointSupport(M,A,b)
 
-    isSparse = issparse(S);
-    M = S';
+    isSparse = issparse(M);
+    M = M';
     M = any(A(b~=0,:),1) | M; %the stuff we must pass through
-    tau = any(A(:,M>0)~=0,2); %all rows at least partially passed through
-    S = any(A(tau,:),1)';
-    
-    %S will be sparse if A is sparse.  Undo to match input.
+    nnz_M = nnz(M);
+    not_converged = 1;
+    while not_converged
+        tau = any(A(:,M>0)~=0,2); %all rows at least partially passed through
+        M = any(A(tau,:),1)';
+        if nnz_M ~= nnz(M)
+            nnz_M = nnz(M);
+        else
+            not_converged = 0;
+        end
+    end
+    %M will be sparse if A is sparse.  Undo to match input.
     if ~isSparse
-        S = full(S); 
+        M = full(M); 
     end
     
 end
