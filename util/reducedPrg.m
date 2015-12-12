@@ -78,7 +78,7 @@ classdef reducedPrg < frlibPrg
                 CheckFeas = @(info) info.pinf ~= 1 && info.dinf ~= 1;
                 Recover = @(prg,x,y) {x,prg.RecoverDual(y)};
                 DistToFace = @(prg,x,y) norm(prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A  - ...
-                     prg.faces{end}.ProjFace( prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A)' );
+                     prg.faces{end}.ProjFace(prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A)' );
             end
             
     

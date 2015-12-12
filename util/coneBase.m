@@ -284,7 +284,7 @@ classdef coneBase
             if any(subMat > n)
                error('Invalid submatrix'); 
             end
-            t = sparse(n);
+            t = sparse(n,n);
             t(subMat,subMat) = 1;
             y = find(t(:))+offset-1;
             

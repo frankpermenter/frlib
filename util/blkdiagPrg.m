@@ -13,18 +13,19 @@ classdef blkdiagPrg < reducedPrg
      
             [clique,Ar,cr,Kr,indx,M] = BuildMask(unreducedPrg.A,unreducedPrg.b,...
                                         unreducedPrg.c,unreducedPrg.K);
-           
             
-            [Ar,br] = CleanLinear(Ar,unreducedPrg.b);
+            [Ar,br,T] = CleanLinear(Ar,unreducedPrg.b);
             self@reducedPrg(Ar,br,cr,Kr);
             self.unreducedPrg = unreducedPrg;
             self.clique = clique;
-            self.dim(1) =  1/2 * ( nnz(diag(M))+nnz(M));
-            K = unreducedPrg.K;
-            self.dim(2) =  sum( (K.s.^2 + K.s)/2   ) + K.l;
+           
+            self.dim(1) = length(indx);
+           
+            self.dim(2) = size(unreducedPrg.A,2);
             self.indx = indx;
             self.M = M;
-     
+            self.Ty = T;
+            
         end
 
         
@@ -44,50 +45,17 @@ classdef blkdiagPrg < reducedPrg
       
         function [xr] = RecoverPrimal(self,x)
 
-            xf = x(1:self.K.f);
-            xs(self.indx) = x(self.K.f+1:end);
-            xsmat = solUtil.mat(xs);
-            
-            %extract K.l variables
-            Kl = self.unreducedPrg.K.l;
-            xl = diag(xsmat(1:Kl,1:Kl));
-            xsmat = xsmat(Kl+1:end,Kl+1:end);
-            
-            Ks = self.unreducedPrg.K.s;
-            Ks = Ks(Ks~=0);
-            xs = []; 
-            for i=1:length(Ks)
-                s = sum(Ks(1:i-1))+1;
-                e = s + Ks(i)-1;
-                xtemp = xsmat(s:e,s:e); xs = [xs;xtemp(:)];
-            end
-
-            xr = [xf(:);xl(:);xs(:)];
+            cone = coneBase(self.unreducedPrg.K);
+            xr = sparse(ones(1,length(self.indx)),self.indx,x,1,cone.NumVar);
+           
         end
            
-        function [yr,y0,success] = RecoverDual(self,yinput,eps)
+        function [yr] = RecoverDual(self,yinput,eps)
 
-            y0 = self.Ty * yinput;
+            yr = self.Ty * yinput;
              
         end
-        
-        function SolveDualLP(self)
-            
-            [bnd,bndlp]= checkoptimality(self.unreducedPrg.A,self.unreducedPrg.b,self.unreducedPrg.c,self.unreducedPrg.K);
-            bnd - bndlp
-            
-        end
-        
-        function SolvePrimalLP(self)
-            
-            [M]= buildip2(self.unreducedPrg.A,self.unreducedPrg.b,self.unreducedPrg.c,self.unreducedPrg.K);
-            sizes = cellfun(@(x) size(x,1),self.clique); 
-            cliM = sum(sizes.*sizes);
-            optM = sum(sum(M));
-            optM-cliM
-            
-        end        
-        
+
 
         function PrintStats(self)
             
@@ -109,30 +77,7 @@ classdef blkdiagPrg < reducedPrg
 
         end
 
-        function dim = FindCoherent2(self,i)
-
-            A = self.A;
-            b = self.b;
-            xls = A'*(inv(A*A'))*b;
-            m = size(self.A,1);
-            P = [];
-            for i=1:length(self.K.s)
-                indx = self.cone.Kstart.s(i):self.cone.Kend.s(i);
-                Ktemp.s = self.K.s(i);
-                Atemp = self.A(:,indx);
-                ctemp = xls(indx);
-                [M,Ptemp] = CoherentReduce(Atemp,self.b,ctemp);
-                P = blkdiag(P,Ptemp);
-                dim(i) = max(max(M));
-            end
-
-        end
-
-    
-
-      
-      
-              
+               
 end
 
 end
