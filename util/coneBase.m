@@ -7,6 +7,8 @@ classdef coneBase
         indxDiag
         indxNNeg
         NumVar
+        indxU
+        indxL
     end
 
     methods(Static)
@@ -102,6 +104,8 @@ classdef coneBase
             self.indxDiag = indxDiag;
             self.indxNNeg = [Kstart.l:Kend.l,Kstart.q,Kstart.r,Kstart.r+1,cell2mat(indxDiag)];
 
+    
+            
         end
 
     end
@@ -112,7 +116,7 @@ classdef coneBase
 
             self.K = self.cleanK(K);
             self = self.CalcIndices(self.K);
-
+            [self.indxL,self.indxU] = self.CalcIndicesLU;
         end
         
         function y = AnyConicVars(self)
@@ -124,45 +128,59 @@ classdef coneBase
            y = max(0,e-s+1);
         end
 
-        function indx =  LowerTriIndx(self)
+        
+        function [indxL,indxU] =  CalcIndicesLU(self)
 
             startIndx = self.GetIndx('s',1);
 
             if isempty(startIndx)
-                indx = 1:self.NumVar;
+                indxL = 1:self.NumVar; indxU = indxL;
                 return
             end
 
-            indx = [1:startIndx-1];
-
-            for i=1:length(self.K.s)
-                indxDiag = self.indxDiag{i};
-                for j=1:self.K.s(i)
-                   numIndx = self.K.s(i)-j;
-                   indx = [indx,indxDiag(j):indxDiag(j)+numIndx];
-                end
+            indxL = int64([1:startIndx-1]);
+            indxL = [indxL,zeros(1,sum((self.K.s.^2+self.K.s)/2))];
+            
+       
+            indxU = indxL;
+            
+            offset = startIndx-1;
+            
+            Ktemp = self.K.s;
+            Ktemp = Ktemp(Ktemp~=0);
+            for i=1:length(Ktemp)
+         
+                N = Ktemp(i);
+                temp = solUtil.mat( (offset+1:(offset+N*N)));
+                
+                tempL = tril(temp);
+                tempL = tempL(tempL~=0);
+                tempU = tril(temp');
+                tempU = tempU(tempU~=0);
+         
+                endIndx = startIndx+(N*N+N)/2-1;
+                indxL(startIndx:endIndx) = tempL(:);
+                indxU(startIndx:endIndx) = tempU(:);
+                offset = temp(end);
+                startIndx = endIndx + 1;
             end
 
         end
+        
+        
+        
+        function indx =  LowerTriIndx(self)
 
+           indx = self.indxL;
+
+        end
+
+       
+        
+        
         function indx  =  UpperTriIndx(self)
 
-            [startIndx] = self.GetIndx('s',1);
-            if isempty(startIndx)
-                indx = 1:self.NumVar;
-                return
-            end
-
-            indx = [1:startIndx-1];
-
-            for i=1:length(self.K.s)
-                [~,endIndx] = self.GetIndx('s',i);
-                indxDiag = self.indxDiag{i};
-                N = self.K.s(i);
-                for j=1:self.K.s(i)
-                   indx = [indx,indxDiag(j):N:endIndx];
-                end
-            end
+             indx = self.indxU;
 
         end
 
@@ -196,7 +214,7 @@ classdef coneBase
         
         function A = InitSymmetric(self,vals)
                        
-            A = sparse(size(vals,1), self.NumVar);
+          %  A = sparse(size(vals,1), self.NumVar);
             A(:,self.LowerTriIndx()) = vals;
             A(:,self.UpperTriIndx()) = vals;
             
@@ -259,6 +277,18 @@ classdef coneBase
 
         end
 
+        function [y] = SubMatToIndx(self,subMat,numPsd)
+            
+            offset = self.Kstart.s(numPsd);
+            n = self.K.s(numPsd);
+            if any(subMat > n)
+               error('Invalid submatrix'); 
+            end
+            t = sparse(n,n);
+            t(subMat,subMat) = 1;
+            y = find(t(:))+offset-1;
+            
+        end
 
 
         %Find variables in cone that vanish if others vanish

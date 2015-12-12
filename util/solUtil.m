@@ -218,6 +218,22 @@ classdef solUtil
             y = reshape(x,n,n);
         end
       
+        function y = isDiagDom(x,eps)
+            
+            if size(x,1) ~= size(x,2) 
+                error('Input must be square')
+            end
+            
+            y =  min(2*diag(x) -sum(abs(x),2))  >= -eps ...
+                    & all(diag(x) >= -eps );
+        end
+        
+        function x = flooreps(x,eps)
+             x_mask = abs(x) > eps; 
+             x = x_mask .* x;
+        end
+        
+        
     end
             
 end

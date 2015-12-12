@@ -42,7 +42,8 @@ classdef reducedPrimalPrg < reducedPrg
             self.Ty = Ty;
             self.opts = opts;     
             self.faces = faces;
-     
+            self.primalOrDual = 'primal';
+
         end
 
         

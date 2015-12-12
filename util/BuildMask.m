@@ -1,71 +1,76 @@
 function [cliques,Ar,cr,Kr,indx,M] = BuildMask(A,b,c,K)
 
-c = c(:)';
-if nnz(c(1:K.f)) > 0
-    error('Cannot eliminate free variables if they appear in objective');
-end
-
 if K.q + K.r  > 0
     error('Lorentz cone constraints not yet supported.');
 end
 
-Ain = A;
-bin = b;
-Kin = K;
-cin = c;
+M = full(c~=0);
+M = M(:);
+nnz_M = nnz(M);
+cone = coneBase(K);
+Kr = K;
 
-Kin = coneBase.cleanK(Kin);
-
-[Apsd,~] = ConsolidateLinearAndPSDConstraints(A,K);
-[c,K] = ConsolidateLinearAndPSDConstraints(c,K);
-
-if (Kin.f > 0)
-    [Apsd,b] = EliminateFreeVars([Ain(:,1:Kin.f),Apsd],b,Kin.f);
-end
-
-tau = double(b~=0);
-tauPrev = tau;
-
+cliques = {};
 
 while(1)
 
-    Mvect = any(Apsd(tau~=0,:)) | c;
-    M = solUtil.mat( Mvect);
-    [M,cliques] = BinaryPsdCompletion(M);
-    Mvect = M(:)';
-    tau(any(Apsd(:,Mvect>0)~=0,2)) = 1;
-    if all(tau == tauPrev)
-        break;
-    else
-        tauPrev = tau;
+    [M] = SubspaceClosureCoordDisjointSupport(M,A,b);
+    for i=1:length(K.s)
+        [s,e] = cone.GetIndx('s',i);
+        [temp,cliques_i] = BinaryPsdCompletion(solUtil.mat(M(s:e)));
+        M(s:e) = temp(:);
+        Kr.s(i) = length(cliques_i);
+        cliques{i} = cliques_i;
     end
+    
+    if (nnz_M == nnz(M))
+       break; 
+    end
+        
+    nnz_M = nnz(M);
+    
+end
+
+
+[s,e] = cone.GetIndx('f',1);
+indx = find(M(s:e));
+Kr.f = length(indx);
+
+[s,e] = cone.GetIndx('l',1);
+indx = find(M(s:e));
+Kr.l = length(indx);
+
+[s,e] = cone.GetIndx('s',1);
+indx =  find(M(1:s-1));
+
+Kr.s = [];
+for i=1:length(K.s)
+    for j=1:length(cliques{i})
+        indx = [indx;cone.SubMatToIndx(cliques{i}{j},i  )];
+        Kr.s(end+1) = length(cliques{i}{j});
+    end
+end
+
+Ar = A(:,indx);
+br = b;
+cr = c(indx);
 
 end
 
 
-indx = zeros(nnz(Mvect),1); e = 0;
-for i=1:length(cliques)
-    [p,q] = meshgrid(cliques{i}, cliques{i});   
-    s = e+1;
-    e = s+length(cliques{i})^2-1;
-    indx(s:e) = sub2ind(size(M),p(:),q(:));
+function [S] = SubspaceClosureCoordDisjointSupport(S,A,b)
+
+    isSparse = issparse(S);
+    M = S';
+    M = any(A(b~=0,:),1) | M; %the stuff we must pass through
+    tau = any(A(:,M>0)~=0,2); %all rows at least partially passed through
+    S = any(A(tau,:),1)';
+    
+    %S will be sparse if A is sparse.  Undo to match input.
+    if ~isSparse
+        S = full(S); 
+    end
+    
 end
-
-Ktemp  = Kin; Ktemp.f = 0;
-A = ConsolidateLinearAndPSDConstraints(Ain(:,Kin.f+1:end),Ktemp);  
-c = ConsolidateLinearAndPSDConstraints(cin(:,Kin.f+1:end),Ktemp);  
-Ar = [Ain(:,1:Kin.f),A(:,indx)];
-cr = [cin(1:Kin.f),c(indx)];
-Kr.f = Kin.f;
-Kr.s = cellfun(@(x)size(x,1),cliques,'UniformOutput',1);
-Kr.l = sum(Kr.s==1);
-Kr.s = Kr.s(Kr.s~=1);
-
-
-
-
-
-
-
 
 

@@ -1,5 +1,7 @@
 function [Apsd,Kpsd] = ConsolidateLinearAndPSDConstraints(A,K)
 
+    K = coneBase(K); K = K.K;
+    
     if (length(K.s)+K.l <= 1) && (K.f == 0)
        Apsd = A; Kpsd = K;
        return;

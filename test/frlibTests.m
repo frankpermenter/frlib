@@ -3,14 +3,14 @@ function frlibTests
     opts.useQR = 1;
 
     eps = 10^-4;
-    
-    load hybridLyap.mat;
+    directory =  fileparts(which('frlibTests.m'));
+    load([directory,'/hybrid/hybridLyap.mat']);
     A = A';
     prg = frlibPrg(A,b,c,K);
 
     %diagonal
     TestDisplay('Checking reduction of primal (diagonal)');
-    prgD = prg.ReducePrimal('d');
+    
     prgD = prg.ReducePrimal('d',opts);
     PrintStats(prgD);
     
@@ -57,16 +57,17 @@ function pass = runHorn(opts)
     pass = [];
     eps = 10^-4;
  
+    directory =  fileparts(which('frlibTests.m'));
     for i=2:5
         
-        load(['horn',num2str(i),'.mat']);
+        load([directory,'/copos/horn',num2str(i),'.mat']);
         p = frlibPrg(A,b,[],K);
         pred = p.ReducePrimal('dd',opts);
         PrintStats(pred);
         
         pass(end+1) = TestSolution(p,pred,eps);
   
-        load(['hornD',num2str(i),'.mat']);
+        load([directory,'/copos/hornD',num2str(i),'.mat']);
         d = frlibPrg(A,[],c(:),K);
         dred = d.ReduceDual('dd',opts);
         PrintStats(dred);
@@ -103,7 +104,7 @@ function pass = TestSolution(prg,prgR,eps)
         pass = 1; 
     end
     
-    pass = pass & prgR.VerifyRedCert();
+    pass = pass & prgR.VerifyRedCert(eps);
     
 end
 
