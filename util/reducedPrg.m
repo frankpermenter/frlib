@@ -12,8 +12,7 @@ classdef reducedPrg < frlibPrg
         
         Ty 
         y0
-        primalOrDual
-
+       
     end
 
     methods(Abstract)
@@ -70,18 +69,25 @@ classdef reducedPrg < frlibPrg
             
         function [datar,dataNoRed] = PrintError(self)
 
-            if strcmp(self.primalOrDual,'primal')
+            if isa(self, 'reducedPrimalPrg')
                 CheckFeas = @(info) info.pinf ~= 1 && info.dinf ~= 1;
                 Recover = @(prg,x,y) {prg.RecoverPrimal(x),y};
                 DistToFace = @(prg,x,y) norm(x- prg.faces{end}.ProjFace(x))/norm(x);
-            else
+            end
+             
+            if isa(self, 'reducedDualPrg')
                 CheckFeas = @(info) info.pinf ~= 1 && info.dinf ~= 1;
                 Recover = @(prg,x,y) {x,prg.RecoverDual(y)};
                 DistToFace = @(prg,x,y) norm(prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A  - ...
                      prg.faces{end}.ProjFace(prg.unreducedPrg.c(:)'-y'*prg.unreducedPrg.A)' );
             end
+        
+            if isa(self, 'blkdiagPrg')
+                CheckFeas = @(info) info.pinf ~= 1 && info.dinf ~= 1;
+                Recover = @(prg,x,y) {prg.RecoverPrimal(x),prg.RecoverDual(y)};
+                DistToFace = @(prg,x,y) norm(prg.M.*x(:)-x(:))
+            end
             
-    
            % pars.fid = 0;
           
             [x,y,info] = self.unreducedPrg.Solve();

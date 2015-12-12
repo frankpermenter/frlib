@@ -42,8 +42,7 @@ classdef reducedPrimalPrg < reducedPrg
             self.Ty = Ty;
             self.opts = opts;     
             self.faces = faces;
-            self.primalOrDual = 'primal';
-
+         
         end
 
         
@@ -93,7 +92,12 @@ classdef reducedPrimalPrg < reducedPrg
             ComputeDelta = @(t,redCert) t*redCert.S;
             s0 = self.unreducedPrg.c-y0'*self.unreducedPrg.A;
          
-            [~,success,deltas] = solUtil.LineSearch(s0,self.faces,ComputeDelta,eps);    
+            if length(self.faces) == 2
+                [~,success,deltas] = solUtil.LineSearch(s0,self.faces,ComputeDelta,eps);    
+            else
+                success = 0;
+            end
+            
             if (success)
                 yr = y0;
                 for i=2:length(self.faces)

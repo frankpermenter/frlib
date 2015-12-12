@@ -65,8 +65,7 @@ classdef reducedDualPrg < reducedPrg
             self.opts = opts;
             self.Ty = Ty;
             self.y0 = y0;
-            self.primalOrDual = 'dual';
-           
+
         end
         
         function [xr,yr,primal_recov_success,x0] = Recover(self,x,y,eps)
@@ -141,7 +140,7 @@ classdef reducedDualPrg < reducedPrg
             xperp = self.faces{end}.resSubspace'*Z(:)+self.faces{end}.spanConjFace'*R(:);
             x = Q(:)' + xperp(:)';
           
-            xr = x; 
+            xr = []; 
             x0 = xr;
      
             if (freeRecovFailed)
@@ -150,7 +149,15 @@ classdef reducedDualPrg < reducedPrg
             end
             
             ComputeDelta = @(t,redCert) t*redCert.S;
-            [xr,success] = solUtil.LineSearch(x0,self.faces,ComputeDelta,eps);  
+            
+            
+            if length(self.faces) == 2
+                [xr,success] = solUtil.LineSearch(x0,self.faces,ComputeDelta,eps);     
+            else
+                success = 0; xr = [];
+            end
+            
+            
             
         end
    
